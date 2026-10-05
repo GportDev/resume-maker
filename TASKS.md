@@ -97,6 +97,22 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
   - Handoff below records exact evidence and next action.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`
 
+## S08 — Anthropic provider
+
+- Status: `IN_PROGRESS`
+- Depends on: S07
+- Intent: run all reading/rewriting AI tasks through Anthropic (default) or OpenAI with per-provider encrypted BYOK and injectable models.
+- Files: `package.json`, `.env.example`, `app/lib/env.server.ts`, `app/lib/ai-provider.server.ts`, `app/lib/ai.server.ts`, `app/lib/repositories.server.ts`, `app/db/schema.ts`, `drizzle/*`, `app/routes/ai-settings.tsx`, `app/routes/api-key-settings.tsx`, `app/routes/home.tsx`, `app/routes/analysis-result.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
+- Acceptance:
+  - `@ai-sdk/anthropic` installed; `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `AI_DEFAULT_PROVIDER` validated server-side and documented in `.env.example`.
+  - `resolveLanguageModel(userId)` uses preferred provider (user setting, else `AI_DEFAULT_PROVIDER`); user key beats platform key; neither raises `NoAiKeyError` with actionable message.
+  - Credential repository methods require `userId` and `provider`; one key per provider per user.
+  - `user_settings` table stores preferred provider; migration generated.
+  - `analyzeJob`/`generateResume` accept `LanguageModel`; structured output schema failure retried once; second failure throws, nothing returned.
+  - Client sees generic provider errors; server logs only provider, status, and error name.
+  - `/settings/ai` lets user pick provider and test/save/revoke one masked key per provider; `/settings/api-key` redirects there; nav updated.
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`
+
 ## Handoff
 
 - Current task: none; MVP implementation complete.

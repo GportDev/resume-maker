@@ -1,54 +1,66 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateText, Output } from "ai";
+import {
+  generateText,
+  type LanguageModel,
+  NoObjectGeneratedError,
+  NoOutputGeneratedError,
+  Output,
+} from "ai";
+import { ZodError, type z } from "zod";
 
 import type { experiences, profiles } from "../db/schema";
 import { type JobAnalysis, jobAnalysisSchema } from "./analysis";
-import { decryptUserApiKey } from "./credentials.server";
-import { getServerEnv } from "./env.server";
-import { getUserApiCredential } from "./repositories.server";
 import { resumeContentSchema } from "./resume";
 
 type Experience = typeof experiences.$inferSelect;
 type Profile = typeof profiles.$inferSelect;
 
-export async function getOpenAiKeyForUser(userId: string): Promise<string> {
-  const credential = await getUserApiCredential(userId);
-  if (credential) {
-    return decryptUserApiKey({
-      ciphertext: credential.ciphertext,
-      iv: credential.iv,
-      authTag: credential.authTag,
-      keyVersion: credential.keyVersion as "v1",
-    });
-  }
+const structuredOutputAttempts = 2;
 
-  const platformKey = getServerEnv().OPENAI_API_KEY;
-  if (!platformKey) {
-    throw new Error(
-      "No OpenAI API key is configured. Add your key in Settings.",
-    );
+export class StructuredOutputError extends Error {
+  constructor(options: { cause: unknown }) {
+    super("AI response did not match the expected structure.", options);
+    this.name = "StructuredOutputError";
   }
-  return platformKey;
 }
 
-function createModel(apiKey: string) {
-  const openai = createOpenAI({ apiKey });
-  return openai(getServerEnv().OPENAI_MODEL);
+function isSchemaFailure(error: unknown): boolean {
+  return (
+    error instanceof ZodError ||
+    NoObjectGeneratedError.isInstance(error) ||
+    NoOutputGeneratedError.isInstance(error)
+  );
 }
 
-export async function testOpenAiKey(apiKey: string): Promise<void> {
-  await generateText({
-    model: createModel(apiKey),
-    prompt: "Reply with only OK.",
-  });
+export async function generateStructured<Schema extends z.ZodType>(input: {
+  model: LanguageModel;
+  schema: Schema;
+  system: string;
+  prompt: string;
+}): Promise<z.output<Schema>> {
+  let lastFailure: unknown;
+  for (let attempt = 0; attempt < structuredOutputAttempts; attempt++) {
+    try {
+      const { output } = await generateText({
+        model: input.model,
+        output: Output.object({ schema: input.schema }),
+        system: input.system,
+        prompt: input.prompt,
+      });
+      return input.schema.parse(output);
+    } catch (error) {
+      if (!isSchemaFailure(error)) throw error;
+      lastFailure = error;
+    }
+  }
+  throw new StructuredOutputError({ cause: lastFailure });
 }
 
 export async function analyzeJob(input: {
-  apiKey: string;
+  model: LanguageModel;
   jobDescription: string;
   profile: Profile | undefined;
   experiences: Experience[];
-}) {
+}): Promise<JobAnalysis> {
   const evidence = input.experiences.map((experience) => ({
     id: experience.id,
     company: experience.company,
@@ -59,9 +71,9 @@ export async function analyzeJob(input: {
     markdown: experience.markdown,
   }));
 
-  const { output } = await generateText({
-    model: createModel(input.apiKey),
-    output: Output.object({ schema: jobAnalysisSchema }),
+  return generateStructured({
+    model: input.model,
+    schema: jobAnalysisSchema,
     system: [
       "You analyze job descriptions against verified candidate evidence.",
       "Never infer a skill or accomplishment absent from evidence.",
@@ -76,20 +88,18 @@ export async function analyzeJob(input: {
       candidateExperiences: evidence,
     }),
   });
-
-  return jobAnalysisSchema.parse(output);
 }
 
 export async function generateResume(input: {
-  apiKey: string;
+  model: LanguageModel;
   account: { name: string; email: string };
   profile: Profile | undefined;
   experiences: Experience[];
   analysis: JobAnalysis;
 }) {
-  const { output } = await generateText({
-    model: createModel(input.apiKey),
-    output: Output.object({ schema: resumeContentSchema }),
+  return generateStructured({
+    model: input.model,
+    schema: resumeContentSchema,
     system: [
       "Create a concise ATS-friendly resume from verified evidence only.",
       "Never invent metrics, tools, skills, employers, positions, or dates.",
@@ -119,6 +129,4 @@ export async function generateResume(input: {
       })),
     }),
   });
-
-  return resumeContentSchema.parse(output);
 }

@@ -19,7 +19,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 1. Sign up with email and password.
 2. Add profile details.
 3. Add one or more experiences with company, role, dates, and Markdown evidence.
-4. Optionally save own OpenAI API key.
+4. Optionally choose AI provider (Anthropic default, OpenAI optional) and save own API key.
 5. Paste job description and run analysis.
 6. Review score, matches, gaps, and learning resources.
 7. Generate, edit, save, and download tailored resume.
@@ -47,13 +47,16 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Create, read, update, delete, preview, import `.md`, export `.md`.
 - Markdown should emphasize facts, outcomes, tools, scope, and measurable impact.
 
-### API key settings
+### AI provider and API key settings
 
-- Platform OpenAI key may power generation.
-- User may save own OpenAI API key.
-- Saved key encrypted at rest; UI shows only masked suffix.
-- User can test, replace, or revoke key.
-- User key takes precedence over platform key.
+- Supported providers: Anthropic (Claude, default) and OpenAI (optional), both through Vercel AI SDK.
+- User selects preferred provider; platform default comes from `AI_DEFAULT_PROVIDER`.
+- Platform Anthropic or OpenAI key may power generation.
+- User may save one own API key per provider.
+- Saved keys encrypted at rest; UI shows only masked suffix.
+- User can test, replace, or revoke each key.
+- For preferred provider, user key takes precedence over platform key; missing both yields actionable error.
+- Structured output failing schema validation is retried once; second failure returns actionable error.
 
 ### Job analysis
 
@@ -74,7 +77,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 
 ## Non-goals
 
-- Stripe billing, team workspaces, recruiter portal, job-board scraping, cover letters, DOCX export, multi-provider AI, vector search, and automatic application submission.
+- Stripe billing, team workspaces, recruiter portal, job-board scraping, cover letters, DOCX export, AI providers beyond Anthropic and OpenAI, vector search, and automatic application submission.
 - Predicting actual recruiter decisions or guaranteeing ATS passage.
 
 ## Data entities
@@ -84,7 +87,8 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Experience: many per user.
 - Job analysis: immutable job input plus structured analysis and score.
 - Resume: editable generated snapshot linked to analysis.
-- User API credential: encrypted provider secret metadata, one active OpenAI key per user.
+- User API credential: encrypted provider secret metadata, at most one active key per provider per user.
+- User settings: one per user; preferred AI provider.
 
 ## Security and privacy
 

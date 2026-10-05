@@ -18,11 +18,12 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^4.0.16",
+    "@ai-sdk/anthropic": "^4.0.71",
+    "@ai-sdk/openai": "^4.0.83",
     "@react-pdf/renderer": "^4.5.1",
     "@react-router/node": "8.0.0",
     "@react-router/serve": "8.0.0",
-    "ai": "^7.0.31",
+    "ai": "^7.0.127",
     "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
     "isbot": "^5.1.36",

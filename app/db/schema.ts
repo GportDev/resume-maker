@@ -12,6 +12,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { aiProviders } from "../lib/ai-providers";
+
 export const user = pgTable(
   "user",
   {
@@ -208,7 +210,9 @@ export const userApiCredentials = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    provider: text("provider").default("openai").notNull(),
+    provider: text("provider", { enum: aiProviders })
+      .default("openai")
+      .notNull(),
     ciphertext: text("ciphertext").notNull(),
     iv: text("iv").notNull(),
     authTag: text("auth_tag").notNull(),
@@ -226,6 +230,32 @@ export const userApiCredentials = pgTable(
     uniqueIndex("user_api_credentials_owner_provider_idx").on(
       table.userId,
       table.provider,
+    ),
+    check(
+      "user_api_credentials_provider_check",
+      sql`${table.provider} IN ('anthropic', 'openai')`,
+    ),
+  ],
+);
+
+export const userSettings = pgTable(
+  "user_settings",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    aiProvider: text("ai_provider", { enum: aiProviders }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "user_settings_ai_provider_check",
+      sql`${table.aiProvider} IN ('anthropic', 'openai')`,
     ),
   ],
 );
