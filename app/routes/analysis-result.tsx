@@ -1,5 +1,11 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { generateResume, getOpenAiKeyForUser } from "../lib/ai.server";
+import { generateResume } from "../lib/ai.server";
+import {
+  logProviderError,
+  NoAiKeyError,
+  resolveLanguageModel,
+} from "../lib/ai-provider.server";
+import type { AiProvider } from "../lib/ai-providers";
 import {
   getLearningResources,
   jobAnalysisSchema,
@@ -54,11 +60,13 @@ export async function action({ request, params }: Route.ActionArgs) {
     throw new Response("Analysis not found.", { status: 404 });
   }
 
+  let provider: AiProvider | undefined;
   try {
     const analysis = jobAnalysisSchema.parse(record.analysis);
-    const apiKey = await getOpenAiKeyForUser(user.id);
+    const resolved = await resolveLanguageModel(user.id);
+    provider = resolved.provider;
     const generated = await generateResume({
-      apiKey,
+      model: resolved.model,
       account: user,
       profile,
       experiences: experienceList,
@@ -74,7 +82,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       content,
     });
     return redirect(`/resumes/${resume.id}`);
-  } catch {
+  } catch (error) {
+    if (error instanceof NoAiKeyError) {
+      return data({ error: error.message }, { status: 400 });
+    }
+    logProviderError("generate-resume", provider, error);
     return data(
       {
         error:

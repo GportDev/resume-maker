@@ -6,7 +6,9 @@ import {
   profiles,
   resumes,
   userApiCredentials,
+  userSettings,
 } from "../db/schema";
+import type { AiProvider } from "./ai-providers";
 import { db } from "./db.server";
 import type { experienceInputSchema, profileInputSchema } from "./validation";
 
@@ -144,17 +146,27 @@ export async function updateResume(
   return resume;
 }
 
-export async function getUserApiCredential(userId: string) {
+export async function getUserApiCredential(
+  userId: string,
+  provider: AiProvider,
+) {
   return db.query.userApiCredentials.findFirst({
     where: and(
       eq(userApiCredentials.userId, userId),
-      eq(userApiCredentials.provider, "openai"),
+      eq(userApiCredentials.provider, provider),
     ),
+  });
+}
+
+export async function listUserApiCredentials(userId: string) {
+  return db.query.userApiCredentials.findMany({
+    where: eq(userApiCredentials.userId, userId),
   });
 }
 
 export async function saveUserApiCredential(
   userId: string,
+  provider: AiProvider,
   credential: {
     ciphertext: string;
     iv: string;
@@ -165,7 +177,7 @@ export async function saveUserApiCredential(
 ) {
   const [saved] = await db
     .insert(userApiCredentials)
-    .values({ ...credential, userId, provider: "openai", testedAt: new Date() })
+    .values({ ...credential, userId, provider, testedAt: new Date() })
     .onConflictDoUpdate({
       target: [userApiCredentials.userId, userApiCredentials.provider],
       set: { ...credential, testedAt: new Date(), updatedAt: new Date() },
@@ -174,15 +186,39 @@ export async function saveUserApiCredential(
   return saved;
 }
 
-export async function deleteUserApiCredential(userId: string) {
+export async function deleteUserApiCredential(
+  userId: string,
+  provider: AiProvider,
+) {
   const [deleted] = await db
     .delete(userApiCredentials)
     .where(
       and(
         eq(userApiCredentials.userId, userId),
-        eq(userApiCredentials.provider, "openai"),
+        eq(userApiCredentials.provider, provider),
       ),
     )
     .returning({ id: userApiCredentials.id });
   return deleted;
+}
+
+export async function getUserSettings(userId: string) {
+  return db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+  });
+}
+
+export async function saveUserSettings(
+  userId: string,
+  input: { aiProvider: AiProvider },
+) {
+  const [settings] = await db
+    .insert(userSettings)
+    .values({ ...input, userId })
+    .onConflictDoUpdate({
+      target: userSettings.userId,
+      set: { ...input, updatedAt: new Date() },
+    })
+    .returning();
+  return settings;
 }
