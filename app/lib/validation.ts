@@ -18,16 +18,42 @@ export const profileInputSchema = z.object({
   linkedin: optionalUrl.default(""),
 });
 
+export const companyNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Company name is required.")
+  .max(160);
+
+export const companyInputSchema = z.object({
+  name: companyNameSchema,
+  website: optionalUrl.default(""),
+  location: z.string().trim().max(120).default(""),
+});
+
+export const experienceMarkdownSchema = z
+  .string()
+  .trim()
+  .min(20, "Write at least 20 characters of evidence.")
+  .max(50_000);
+
 export const experienceInputSchema = z
   .object({
-    company: z.string().trim().min(1).max(160),
+    companyId: z.union([z.literal(""), z.uuid()]).default(""),
+    newCompanyName: z.string().trim().max(160).default(""),
     position: z.string().trim().min(1).max(160),
     startDate: z.iso.date(),
     endDate: z.union([z.literal(""), z.iso.date()]).nullable(),
     isCurrent: z.boolean(),
-    markdown: z.string().trim().min(20).max(50_000),
+    markdown: experienceMarkdownSchema,
   })
   .superRefine((value, context) => {
+    if (!value.companyId && !value.newCompanyName) {
+      context.addIssue({
+        code: "custom",
+        path: ["companyId"],
+        message: "Choose a company or enter a new company name.",
+      });
+    }
     if (!value.isCurrent && !value.endDate) {
       context.addIssue({
         code: "custom",
@@ -43,8 +69,11 @@ export const experienceInputSchema = z
       });
     }
   })
-  .transform((value) => ({
+  .transform(({ companyId, newCompanyName, ...value }) => ({
     ...value,
+    company: companyId
+      ? ({ kind: "existing", id: companyId } as const)
+      : ({ kind: "new", name: newCompanyName } as const),
     endDate: value.isCurrent ? null : value.endDate || null,
   }));
 

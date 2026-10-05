@@ -1,6 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import type { z } from "zod";
 import {
+  companies,
   experiences,
   jobAnalyses,
   profiles,
@@ -9,11 +10,20 @@ import {
   userSettings,
 } from "../db/schema";
 import type { AiProvider } from "./ai-providers";
+import type { CompanyRecord, ExperienceWithCompany } from "./contributions";
 import { db } from "./db.server";
-import type { experienceInputSchema, profileInputSchema } from "./validation";
+import type {
+  companyInputSchema,
+  experienceInputSchema,
+  profileInputSchema,
+} from "./validation";
 
 type ProfileInput = z.infer<typeof profileInputSchema>;
+type CompanyInput = z.output<typeof companyInputSchema>;
 type ExperienceInput = z.output<typeof experienceInputSchema>;
+type ExperienceWriteInput = Omit<ExperienceInput, "company"> & {
+  companyId: string;
+};
 
 export async function getProfile(userId: string) {
   return db.query.profiles.findFirst({
@@ -33,23 +43,160 @@ export async function saveProfile(userId: string, input: ProfileInput) {
   return profile;
 }
 
-export async function listExperiences(userId: string) {
-  return db.query.experiences.findMany({
-    where: eq(experiences.userId, userId),
-    orderBy: [desc(experiences.startDate)],
+function isUniqueViolation(error: unknown): boolean {
+  const candidates = [error, error instanceof Error ? error.cause : undefined];
+  return candidates.some(
+    (candidate) =>
+      typeof candidate === "object" &&
+      candidate !== null &&
+      "code" in candidate &&
+      candidate.code === "23505",
+  );
+}
+
+export async function listCompanies(userId: string) {
+  return db.query.companies.findMany({
+    where: eq(companies.userId, userId),
+    orderBy: [asc(companies.sortOrder), asc(companies.name)],
   });
 }
 
-export async function getExperience(userId: string, experienceId: string) {
-  return db.query.experiences.findFirst({
+export async function getCompany(userId: string, companyId: string) {
+  return db.query.companies.findFirst({
+    where: and(eq(companies.id, companyId), eq(companies.userId, userId)),
+  });
+}
+
+async function findCompanyByName(userId: string, name: string) {
+  return db.query.companies.findFirst({
     where: and(
-      eq(experiences.id, experienceId),
-      eq(experiences.userId, userId),
+      eq(companies.userId, userId),
+      sql`lower(${companies.name}) = lower(${name})`,
     ),
   });
 }
 
-export async function createExperience(userId: string, input: ExperienceInput) {
+export async function createCompany(
+  userId: string,
+  input: CompanyInput,
+): Promise<{ company: CompanyRecord } | { error: "duplicate" }> {
+  const [company] = await db
+    .insert(companies)
+    .values({ ...input, userId })
+    .onConflictDoNothing()
+    .returning();
+  return company ? { company } : { error: "duplicate" };
+}
+
+export async function findOrCreateCompany(userId: string, name: string) {
+  const existing = await findCompanyByName(userId, name);
+  if (existing) return existing;
+  const created = await createCompany(userId, {
+    name,
+    website: "",
+    location: "",
+  });
+  if ("company" in created) return created.company;
+  const raced = await findCompanyByName(userId, name);
+  if (!raced) throw new Error("Company could not be created.");
+  return raced;
+}
+
+export async function updateCompany(
+  userId: string,
+  companyId: string,
+  input: CompanyInput,
+): Promise<{ company: CompanyRecord } | { error: "duplicate" | "not-found" }> {
+  const clash = await findCompanyByName(userId, input.name);
+  if (clash && clash.id !== companyId) return { error: "duplicate" };
+  try {
+    const [company] = await db
+      .update(companies)
+      .set({ ...input, updatedAt: new Date() })
+      .where(and(eq(companies.id, companyId), eq(companies.userId, userId)))
+      .returning();
+    return company ? { company } : { error: "not-found" };
+  } catch (error) {
+    if (isUniqueViolation(error)) return { error: "duplicate" };
+    throw error;
+  }
+}
+
+export async function countCompanyExperiences(
+  userId: string,
+  companyId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({ total: count() })
+    .from(experiences)
+    .where(
+      and(eq(experiences.companyId, companyId), eq(experiences.userId, userId)),
+    );
+  return row?.total ?? 0;
+}
+
+export async function deleteCompany(
+  userId: string,
+  companyId: string,
+): Promise<"deleted" | "has-positions" | "not-found"> {
+  if ((await countCompanyExperiences(userId, companyId)) > 0) {
+    return "has-positions";
+  }
+  const [deleted] = await db
+    .delete(companies)
+    .where(and(eq(companies.id, companyId), eq(companies.userId, userId)))
+    .returning({ id: companies.id });
+  return deleted ? "deleted" : "not-found";
+}
+
+export async function resolveExperienceCompany(
+  userId: string,
+  company: ExperienceInput["company"],
+): Promise<CompanyRecord | undefined> {
+  if (company.kind === "new") return findOrCreateCompany(userId, company.name);
+  return getCompany(userId, company.id);
+}
+
+const experienceWithCompanyColumns = {
+  ...getTableColumns(experiences),
+  company: companies.name,
+};
+
+function selectExperiencesWithCompany() {
+  return db
+    .select(experienceWithCompanyColumns)
+    .from(experiences)
+    .innerJoin(
+      companies,
+      and(
+        eq(companies.id, experiences.companyId),
+        eq(companies.userId, experiences.userId),
+      ),
+    );
+}
+
+export async function listExperiences(
+  userId: string,
+): Promise<ExperienceWithCompany[]> {
+  return selectExperiencesWithCompany()
+    .where(eq(experiences.userId, userId))
+    .orderBy(desc(experiences.startDate));
+}
+
+export async function getExperience(
+  userId: string,
+  experienceId: string,
+): Promise<ExperienceWithCompany | undefined> {
+  const [experience] = await selectExperiencesWithCompany().where(
+    and(eq(experiences.id, experienceId), eq(experiences.userId, userId)),
+  );
+  return experience;
+}
+
+export async function createExperience(
+  userId: string,
+  input: ExperienceWriteInput,
+) {
   const [experience] = await db
     .insert(experiences)
     .values({ ...input, userId })
@@ -60,7 +207,7 @@ export async function createExperience(userId: string, input: ExperienceInput) {
 export async function updateExperience(
   userId: string,
   experienceId: string,
-  input: ExperienceInput,
+  input: ExperienceWriteInput,
 ) {
   const [experience] = await db
     .update(experiences)
@@ -69,6 +216,21 @@ export async function updateExperience(
       and(eq(experiences.id, experienceId), eq(experiences.userId, userId)),
     )
     .returning();
+  return experience;
+}
+
+export async function updateExperienceMarkdown(
+  userId: string,
+  experienceId: string,
+  markdown: string,
+) {
+  const [experience] = await db
+    .update(experiences)
+    .set({ markdown, updatedAt: new Date() })
+    .where(
+      and(eq(experiences.id, experienceId), eq(experiences.userId, userId)),
+    )
+    .returning({ id: experiences.id, updatedAt: experiences.updatedAt });
   return experience;
 }
 
