@@ -22,7 +22,6 @@ import { requireUser } from "../lib/auth.server";
 import {
   contributionTemplate,
   type ImportMode,
-  markdownFileName,
   mergeImportedMarkdown,
 } from "../lib/contributions";
 import {
@@ -78,20 +77,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     };
   }
 
-  const experience = await getExperience(
-    user.id,
-    requireExperienceId(params.experienceId),
-  );
-  if (!experience) throw notFound();
-
+  const experienceId = requireExperienceId(params.experienceId);
   if (new URL(request.url).searchParams.get("download") === "1") {
-    return new Response(experience.markdown, {
-      headers: {
-        "Content-Type": "text/markdown; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${markdownFileName(experience.company, experience.position)}"`,
-      },
-    });
+    throw redirect(`/contributions/${experienceId}/download`);
   }
+  const experience = await getExperience(user.id, experienceId);
+  if (!experience) throw notFound();
 
   return {
     experience,
@@ -403,7 +394,7 @@ function ContributionEditor({
           </p>
           {experience ? (
             <a
-              href="?download=1"
+              href={`/contributions/${experience.id}/download`}
               download
               className="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400"
             >

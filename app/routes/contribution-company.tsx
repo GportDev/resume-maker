@@ -79,8 +79,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const parsed = companyInputSchema.safeParse({
     name: formData.get("name"),
-    website: formData.get("website"),
-    location: formData.get("location"),
+    website: formData.get("website") ?? undefined,
+    location: formData.get("location") ?? undefined,
   });
   if (!parsed.success) {
     return data({ errors: firstFormError(parsed.error) }, { status: 400 });

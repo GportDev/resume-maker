@@ -9,6 +9,10 @@ export default [
   route("api/auth/*", "routes/auth-api.ts"),
   route("sign-in", "routes/sign-in.tsx"),
   route("sign-up", "routes/sign-up.tsx"),
+  route(
+    "contributions/:experienceId/download",
+    "routes/contribution-download.ts",
+  ),
   layout("routes/app-layout.tsx", [
     index("routes/home.tsx"),
     route("profile", "routes/profile.tsx"),
