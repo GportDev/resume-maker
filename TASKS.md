@@ -99,10 +99,10 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
 
 ## Handoff
 
-- Current task: none; MVP implementation complete.
-- Last completed action: Biome 2.5.4 linting, formatting, import organization, Tailwind CSS parsing, and package scripts configured; unused starter assets removed.
-- Verification: `pnpm check` passes 38 files; `pnpm test` passes 12 tests across 5 files; `pnpm typecheck`, `pnpm build`, and `git diff --check` pass.
-- Blockers: live database migration and browser end-to-end flow require project environment credentials; no credentials were present in repository.
-- Changed files: product/task specs; dependencies and environment template; Biome config; Drizzle schema/migration; auth/app shell; profile and Markdown experience CRUD; encrypted BYOK; analysis/scoring/resources; resume editor/PDF; tests and global styling.
-- Next task: operational setup.
-- First next action: copy `.env.example` to `.env`, supply Supabase/Better Auth/OpenAI/encryption values, run `pnpm db:migrate`, then smoke-test sign-up through PDF download with `pnpm dev`.
+- Current task: none; MVP implementation complete. Cloud Agent local development environment is configured outside product tasks.
+- Last completed action: validated a local PostgreSQL 16 boot path (generated `.env`, `pnpm db:migrate`, `react-router dev` on port 5173) and a browser sign-up, profile save, experience save, sign-out, and sign-in.
+- Verification: `pnpm test` passes 12 tests across 5 files; `pnpm typecheck` and `pnpm build` pass. Browser flow created `cloud-agent@example.com` with profile headline `Software engineer` and current experience `Example Labs` / `Software Engineer`.
+- Blockers: none for local sign-up, profile, and experience. Live job analysis still needs `OPENAI_API_KEY` or a user API key. Hosted Supabase is unused; local Postgres is the Cloud Agent database.
+- Changed files: `AGENTS.md` Cursor Cloud notes; this handoff.
+- Next task: none.
+- First next action: to exercise job analysis, set `OPENAI_API_KEY` in `.env` (see `.env.example`) and restart `react-router dev`, then submit a job description of at least 200 characters from `app/routes/home.tsx` `action`.

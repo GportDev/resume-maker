@@ -99,3 +99,11 @@ Before ending any task or session, update `TASKS.md`:
 - First next action, including file and symbol/section.
 
 Agent must be able to continue using repository files only, without chat history.
+
+## Cursor Cloud specific instructions
+
+- React Router 8 needs Node `>= 22.22.0`. A login shell may resolve `node` to `/exec-daemon/node` `v22.14.0`. Prepend `/home/ubuntu/.nvm/versions/node/v22.22.2/bin` to `PATH` before `node`, `pnpm`, or `react-router`.
+- Cloud Agent startup brings up PostgreSQL 16, ensures the local `resume_maker` role and database, writes `.env` only when that file is missing, runs `pnpm db:migrate`, and serves the app at `http://localhost:5173` with `react-router dev --host 0.0.0.0 --port 5173`.
+- The generated `.env` uses a local `DATABASE_URL` plus generated `BETTER_AUTH_SECRET` and `CREDENTIAL_ENCRYPTION_KEY`. Do not commit `.env` or print those values.
+- `OPENAI_API_KEY` is optional. Sign-up, profile, and experience work without it. Job analysis needs a user API key or `OPENAI_API_KEY`.
+- Use `pnpm test`, `pnpm typecheck`, and `pnpm build` for verification.
