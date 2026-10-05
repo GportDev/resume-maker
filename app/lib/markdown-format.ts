@@ -14,6 +14,7 @@ const bulletPrefix = "- ";
 const boldPlaceholder = "strong text";
 
 function lineStartAt(text: string, index: number): number {
+  if (index <= 0) return 0;
   return text.lastIndexOf("\n", index - 1) + 1;
 }
 
