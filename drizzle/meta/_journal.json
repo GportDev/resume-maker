@@ -15,6 +15,20 @@
       "when": 1791221071566,
       "tag": "0001_ai_provider_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791233454245,
+      "tag": "0002_companies",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791233477031,
+      "tag": "0003_drop_experience_company_text",
+      "breakpoints": true
     }
   ]
 }

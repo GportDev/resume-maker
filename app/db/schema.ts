@@ -3,7 +3,9 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -127,6 +129,33 @@ export const profiles = pgTable(
   (table) => [uniqueIndex("profiles_user_id_idx").on(table.userId)],
 );
 
+export const companies = pgTable(
+  "companies",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    website: text("website").default("").notNull(),
+    location: text("location").default("").notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("companies_owner_name_idx").on(
+      table.userId,
+      sql`lower(${table.name})`,
+    ),
+    uniqueIndex("companies_id_owner_idx").on(table.id, table.userId),
+  ],
+);
+
 export const experiences = pgTable(
   "experiences",
   {
@@ -134,7 +163,7 @@ export const experiences = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    company: text("company").notNull(),
+    companyId: uuid("company_id").notNull(),
     position: text("position").notNull(),
     startDate: date("start_date", { mode: "string" }).notNull(),
     endDate: date("end_date", { mode: "string" }),
@@ -149,6 +178,12 @@ export const experiences = pgTable(
   },
   (table) => [
     index("experiences_user_id_idx").on(table.userId),
+    index("experiences_company_id_idx").on(table.companyId),
+    foreignKey({
+      name: "experiences_company_owner_fk",
+      columns: [table.companyId, table.userId],
+      foreignColumns: [companies.id, companies.userId],
+    }).onDelete("no action"),
     check(
       "experiences_dates_check",
       sql`${table.isCurrent} OR (${table.endDate} IS NOT NULL AND ${table.endDate} >= ${table.startDate})`,
