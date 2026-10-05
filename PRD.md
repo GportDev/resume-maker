@@ -43,9 +43,19 @@ Personalized Resume converts a user's verified work history into a job-specific,
 ### Profile and experiences
 
 - Profile: full name, headline, email, phone, location, website, LinkedIn.
+- Company: name (unique per user, case-insensitive), optional website and location.
 - Experience: company, position, start date, optional end date, current-role flag, Markdown content.
 - Create, read, update, delete, preview, import `.md`, export `.md`.
 - Markdown should emphasize facts, outcomes, tools, scope, and measurable impact.
+
+### Contributions workspace
+
+- Page lists every position as a Markdown file grouped under its company folder; companies ordered by most recent role, positions by start date descending.
+- Selecting a file opens a Markdown code editor with toolbar (heading, bullet, bold, contribution template), edit/preview toggle, and position metadata.
+- Editor works before JavaScript loads (plain textarea form) and upgrades to a code editor after hydration.
+- Changes autosave after a short pause; status shows saved or unsaved; leaving with unsaved changes asks for confirmation.
+- Import one or more `.md` files into a position (append or replace, with confirmation); export each position as `.md`.
+- Company can be renamed or edited; deletion only allowed when it has no positions and requires explicit confirmation.
 
 ### AI provider and API key settings
 
@@ -84,7 +94,8 @@ Personalized Resume converts a user's verified work history into a job-specific,
 
 - Better Auth: user, session, account, verification.
 - Profile: one per user.
-- Experience: many per user.
+- Company: many per user; groups experiences.
+- Experience: many per user; belongs to one owned company.
 - Job analysis: immutable job input plus structured analysis and score.
 - Resume: editable generated snapshot linked to analysis.
 - User API credential: encrypted provider secret metadata, at most one active key per provider per user.

@@ -122,9 +122,27 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
   - `@ai-sdk/anthropic` already strips JSON-schema keywords Anthropic rejects while AI SDK validates against full Zod schema; no relaxed generation schema needed.
   - Default `ANTHROPIC_MODEL` is `claude-sonnet-5-5`.
 
+## S09 — Contributions workspace
+
+- Status: `IN_PROGRESS`
+- Depends on: S08
+- Intent: edit each position's contributions as a Markdown file inside a company-grouped workspace.
+- Files: `PRD.md`, `package.json`, `app/db/schema.ts`, `drizzle/*`, `app/lib/repositories.server.ts`, `app/lib/contributions.ts`, `app/lib/validation.ts`, `app/components/markdown-editor.tsx`, `app/routes/contributions*.tsx`, `app/routes/contribution-*.tsx`, `app/routes/experience-editor.tsx`, `app/routes/profile.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
+- Acceptance:
+  - `companies` table owned by user with case-insensitive unique name; `experiences.company_id` non-null FK (`on delete restrict`); migration backfills companies from existing `experiences.company` text and drops that column; RLS enabled and Supabase roles revoked.
+  - Experience queries still return `company` name so analysis/resume code is unchanged; every company/experience query includes owner condition; a foreign `companyId` is rejected.
+  - `groupExperiencesByCompany` (pure) orders companies by most recent role (current roles first) and positions by start date descending; companies without positions still appear.
+  - `/contributions` shows keyboard-navigable company→position tree with `aria-current`; empty state when no companies.
+  - `/contributions/:experienceId` edits metadata and Markdown; textarea works without JavaScript; CodeMirror replaces it after hydration; toolbar inserts heading, bullet, bold, and contribution template; edit/preview toggle.
+  - Autosave via debounced fetcher (intent `autosave`) persists Markdown only; status `role="status"` shows saved/unsaved/error; navigation with unsaved changes asks for confirmation.
+  - Multiple `.md` import appends or replaces with confirmation; `?download=1` export stays.
+  - `/contributions/companies/:companyId` renames/edits company; delete only when no positions and requires confirmation checkbox.
+  - `/profile/experiences/:id` redirects to `/contributions/:id`; profile links to contributions; nav includes Contributions.
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:migrate` on local PostgreSQL with pre-existing experience rows.
+
 ## Handoff
 
-- Current task: none; S08 `DONE`.
+- Current task: S09 `IN_PROGRESS`.
 - Last completed action: S08 Anthropic provider implemented, tested, and smoke-tested against local PostgreSQL.
 - Verification: `pnpm test && pnpm typecheck && pnpm build && pnpm check` pass (29 tests, 7 files).
 - Blockers: live Anthropic/OpenAI generation and Supabase migration not exercised; no `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or Supabase `DATABASE_URL` available in environment.
