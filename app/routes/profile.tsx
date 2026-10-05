@@ -1,8 +1,8 @@
-import { data, Form, Link, redirect } from "react-router";
+import { data, Form, Link } from "react-router";
 import { requireUser } from "../lib/auth.server";
 import {
-  deleteExperience,
   getProfile,
+  listCompanies,
   listExperiences,
   saveProfile,
 } from "../lib/repositories.server";
@@ -10,35 +10,27 @@ import { firstFormError, profileInputSchema } from "../lib/validation";
 import type { Route } from "./+types/profile";
 
 export function meta() {
-  return [{ title: "Profile and experience | Resume Fit" }];
+  return [{ title: "Profile | Resume Fit" }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireUser(request);
-  const [profile, experienceList] = await Promise.all([
+  const [profile, companyList, experienceList] = await Promise.all([
     getProfile(user.id),
+    listCompanies(user.id),
     listExperiences(user.id),
   ]);
-  return { profile, experienceList, account: user };
+  return {
+    profile,
+    account: user,
+    companyCount: companyList.length,
+    positionCount: experienceList.length,
+  };
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireUser(request);
   const formData = await request.formData();
-  const intent = String(formData.get("intent") ?? "save-profile");
-
-  if (intent === "delete-experience") {
-    const experienceId = String(formData.get("experienceId") ?? "");
-    const deleted = await deleteExperience(user.id, experienceId);
-    if (!deleted) {
-      return data(
-        { errors: { form: "Experience not found." } },
-        { status: 404 },
-      );
-    }
-    return redirect("/profile");
-  }
-
   const parsed = profileInputSchema.safeParse({
     fullName: formData.get("fullName"),
     headline: formData.get("headline"),
@@ -55,41 +47,21 @@ export async function action({ request }: Route.ActionArgs) {
   return data({ saved: true });
 }
 
-function formatDate(value: string | null, current: boolean): string {
-  if (current) return "Present";
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00Z`));
-}
-
 export default function Profile({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { profile, experienceList, account } = loaderData;
+  const { profile, account, companyCount, positionCount } = loaderData;
   const errors: Record<string, string> =
     actionData && "errors" in actionData ? actionData.errors : {};
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
-            Evidence library
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold">
-            Profile and experience
-          </h1>
-        </div>
-        <Link
-          to="/profile/experiences/new"
-          className="rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
-        >
-          Add experience
-        </Link>
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
+          Resume header
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold">Profile</h1>
       </div>
 
       <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -141,62 +113,21 @@ export default function Profile({
         </Form>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-xl font-semibold">Work experience</h2>
-        {experienceList.length ? (
-          <div className="mt-4 grid gap-4">
-            {experienceList.map((experience) => (
-              <article
-                key={experience.id}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
-              >
-                <div className="flex flex-wrap justify-between gap-4">
-                  <div>
-                    <h3 className="font-semibold">{experience.position}</h3>
-                    <p className="text-slate-400">{experience.company}</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {formatDate(experience.startDate, false)} –{" "}
-                      {formatDate(experience.endDate, experience.isCurrent)}
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Link
-                      className="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400"
-                      to={`/profile/experiences/${experience.id}`}
-                    >
-                      Edit
-                    </Link>
-                    <Form method="post">
-                      <input
-                        type="hidden"
-                        name="experienceId"
-                        value={experience.id}
-                      />
-                      <button
-                        type="submit"
-                        name="intent"
-                        value="delete-experience"
-                        className="rounded-lg border border-red-950 px-3 py-2 text-sm text-red-300 hover:border-red-700"
-                      >
-                        Delete
-                      </button>
-                    </Form>
-                  </div>
-                </div>
-                <p className="mt-4 line-clamp-2 whitespace-pre-wrap text-sm text-slate-400">
-                  {experience.markdown}
-                </p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-slate-700 p-10 text-center">
-            <p className="font-medium">No experience added yet.</p>
-            <p className="mt-2 text-sm text-slate-500">
-              Add concrete projects, outcomes, tools, and scope.
-            </p>
-          </div>
-        )}
+      <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <div>
+          <h2 className="text-xl font-semibold">Work experience</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            {positionCount
+              ? `${positionCount} ${positionCount === 1 ? "position" : "positions"} across ${companyCount} ${companyCount === 1 ? "company" : "companies"}.`
+              : "No positions yet. Contribution files hold the evidence used for tailoring."}
+          </p>
+        </div>
+        <Link
+          to={positionCount ? "/contributions" : "/contributions/new"}
+          className="rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
+        >
+          {positionCount ? "Open contributions" : "Add first position"}
+        </Link>
       </section>
     </main>
   );

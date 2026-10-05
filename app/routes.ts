@@ -13,6 +13,11 @@ export default [
     index("routes/home.tsx"),
     route("profile", "routes/profile.tsx"),
     route("profile/experiences/:experienceId", "routes/experience-editor.tsx"),
+    route("contributions", "routes/contributions.tsx", [
+      index("routes/contributions-index.tsx"),
+      route("companies/:companyId", "routes/contribution-company.tsx"),
+      route(":experienceId", "routes/contribution-file.tsx"),
+    ]),
     route("settings/ai", "routes/ai-settings.tsx"),
     route("settings/api-key", "routes/api-key-settings.tsx"),
     route("analyses/:analysisId", "routes/analysis-result.tsx"),

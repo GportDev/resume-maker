@@ -183,7 +183,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             </ul>
             {!loaderData.experienceList.length ? (
               <Link
-                to="/profile"
+                to="/contributions"
                 className="mt-5 inline-block text-sm font-semibold text-cyan-400"
               >
                 Add experience first

@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  type ShouldRevalidateFunctionArgs,
+  useNavigate,
+} from "react-router";
 import { requireUser } from "../lib/auth.server";
 import { authClient } from "../lib/auth-client";
 import type { Route } from "./+types/app-layout";
@@ -7,6 +13,14 @@ import type { Route } from "./+types/app-layout";
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await requireUser(request);
   return { user: session.user };
+}
+
+export function shouldRevalidate({
+  formData,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  if (formData?.get("intent") === "autosave") return false;
+  return defaultShouldRevalidate;
 }
 
 export default function AppLayout({ loaderData }: Route.ComponentProps) {
@@ -29,6 +43,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
           <nav className="flex items-center gap-1" aria-label="Main navigation">
             {[
               ["/", "Analyze"],
+              ["/contributions", "Contributions"],
               ["/profile", "Profile"],
               ["/settings/ai", "AI settings"],
             ].map(([to, label]) => (
