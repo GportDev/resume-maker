@@ -30,7 +30,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
             {[
               ["/", "Analyze"],
               ["/profile", "Profile"],
-              ["/settings/api-key", "API key"],
+              ["/settings/ai", "AI settings"],
             ].map(([to, label]) => (
               <NavLink
                 key={to}

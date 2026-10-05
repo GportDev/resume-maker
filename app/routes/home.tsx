@@ -1,6 +1,12 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { z } from "zod";
-import { analyzeJob, getOpenAiKeyForUser } from "../lib/ai.server";
+import { analyzeJob } from "../lib/ai.server";
+import {
+  logProviderError,
+  NoAiKeyError,
+  resolveLanguageModel,
+} from "../lib/ai-provider.server";
+import { type AiProvider, aiProviderDetails } from "../lib/ai-providers";
 import {
   calculateAtsScore,
   sanitizeAnalysisExperienceIds,
@@ -57,10 +63,12 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
+  let provider: AiProvider | undefined;
   try {
-    const apiKey = await getOpenAiKeyForUser(user.id);
+    const resolved = await resolveLanguageModel(user.id);
+    provider = resolved.provider;
     const rawAnalysis = await analyzeJob({
-      apiKey,
+      model: resolved.model,
       jobDescription: parsed.data,
       profile,
       experiences: experienceList,
@@ -100,11 +108,15 @@ export async function action({ request }: Route.ActionArgs) {
     });
     return redirect(`/analyses/${saved.id}`);
   } catch (error) {
-    const message =
-      error instanceof Error && error.message.startsWith("No OpenAI API key")
-        ? error.message
-        : "Analysis failed. Check your API key and try again.";
-    return data({ error: message }, { status: 502 });
+    if (error instanceof NoAiKeyError) {
+      return data({ error: error.message }, { status: 400 });
+    }
+    logProviderError("analyze-job", provider, error);
+    const label = provider ? aiProviderDetails[provider].label : "AI";
+    return data(
+      { error: `Analysis failed. Check your ${label} API key and try again.` },
+      { status: 502 },
+    );
   }
 }
 

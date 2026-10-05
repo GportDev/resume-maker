@@ -97,12 +97,37 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
   - Handoff below records exact evidence and next action.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`
 
+## S08 — Anthropic provider
+
+- Status: `DONE`
+- Depends on: S07
+- Intent: run all reading/rewriting AI tasks through Anthropic (default) or OpenAI with per-provider encrypted BYOK and injectable models.
+- Files: `package.json`, `.env.example`, `app/lib/env.server.ts`, `app/lib/ai-provider.server.ts`, `app/lib/ai.server.ts`, `app/lib/repositories.server.ts`, `app/db/schema.ts`, `drizzle/*`, `app/routes/ai-settings.tsx`, `app/routes/api-key-settings.tsx`, `app/routes/home.tsx`, `app/routes/analysis-result.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
+- Acceptance:
+  - `@ai-sdk/anthropic` installed; `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `AI_DEFAULT_PROVIDER` validated server-side and documented in `.env.example`.
+  - `resolveLanguageModel(userId)` uses preferred provider (user setting, else `AI_DEFAULT_PROVIDER`); user key beats platform key; neither raises `NoAiKeyError` with actionable message.
+  - Credential repository methods require `userId` and `provider`; one key per provider per user.
+  - `user_settings` table stores preferred provider; migration generated.
+  - `analyzeJob`/`generateResume` accept `LanguageModel`; structured output schema failure retried once; second failure throws, nothing returned.
+  - Client sees generic provider errors; server logs only provider, status, and error name.
+  - `/settings/ai` lets user pick provider and test/save/revoke one masked key per provider; `/settings/api-key` redirects there; nav updated.
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`
+- Evidence:
+  - `pnpm test`: 29 tests across 7 files pass (`tests/ai-provider.test.ts` precedence/no-key/safe-logging; `tests/ai.test.ts` mock-model retry-once, second failure throws, provider errors not retried).
+  - `pnpm typecheck`, `pnpm build`, `pnpm check` (43 files), `git diff --check` pass.
+  - Local PostgreSQL 16: `pnpm db:migrate` applies `0000` and `0001`; `user_settings` has RLS enabled and provider check constraint.
+  - Dev-server smoke (curl): unauthenticated `/settings/ai` redirects to sign-in; `/settings/api-key` returns 301 to `/settings/ai`; set-provider persists; invalid provider returns 400; short key rejected; bogus Anthropic key rejected by provider (401) and not stored; server log contains only operation/provider/name/status; analysis with no key returns `No Anthropic API key is configured…` (400).
+- Notes:
+  - `ai` bumped to 7.0.127 and `@ai-sdk/openai` to 4.0.83 so all AI SDK packages share `@ai-sdk/provider` 4.0.21; older `ai` failed `tsc` with incompatible `LanguageModelV4`.
+  - `@ai-sdk/anthropic` already strips JSON-schema keywords Anthropic rejects while AI SDK validates against full Zod schema; no relaxed generation schema needed.
+  - Default `ANTHROPIC_MODEL` is `claude-sonnet-5-5`.
+
 ## Handoff
 
-- Current task: none; MVP implementation complete.
-- Last completed action: Biome 2.5.4 linting, formatting, import organization, Tailwind CSS parsing, and package scripts configured; unused starter assets removed.
-- Verification: `pnpm check` passes 38 files; `pnpm test` passes 12 tests across 5 files; `pnpm typecheck`, `pnpm build`, and `git diff --check` pass.
-- Blockers: live database migration and browser end-to-end flow require project environment credentials; no credentials were present in repository.
-- Changed files: product/task specs; dependencies and environment template; Biome config; Drizzle schema/migration; auth/app shell; profile and Markdown experience CRUD; encrypted BYOK; analysis/scoring/resources; resume editor/PDF; tests and global styling.
-- Next task: operational setup.
-- First next action: copy `.env.example` to `.env`, supply Supabase/Better Auth/OpenAI/encryption values, run `pnpm db:migrate`, then smoke-test sign-up through PDF download with `pnpm dev`.
+- Current task: none; S08 `DONE`.
+- Last completed action: S08 Anthropic provider implemented, tested, and smoke-tested against local PostgreSQL.
+- Verification: `pnpm test && pnpm typecheck && pnpm build && pnpm check` pass (29 tests, 7 files).
+- Blockers: live Anthropic/OpenAI generation and Supabase migration not exercised; no `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or Supabase `DATABASE_URL` available in environment.
+- Changed files: `PRD.md`, `TASKS.md`, `package.json`, `pnpm-lock.yaml`, `.env.example`, `app/db/schema.ts`, `drizzle/0001_ai_provider_settings.sql`, `drizzle/meta/*`, `app/lib/ai-providers.ts`, `app/lib/ai-provider.server.ts`, `app/lib/ai.server.ts`, `app/lib/env.server.ts`, `app/lib/repositories.server.ts`, `app/routes.ts`, `app/routes/ai-settings.tsx`, `app/routes/api-key-settings.tsx`, `app/routes/app-layout.tsx`, `app/routes/home.tsx`, `app/routes/analysis-result.tsx`, `tests/ai-provider.test.ts`, `tests/ai.test.ts`.
+- Next task: S09 — Contributions workspace (not yet in this file).
+- First next action: add `S09 — Contributions workspace` section above `## Handoff` with acceptance criteria: `companies` table (`user_id`, `name`, unique per user, case-insensitive) and `experiences.company_id` FK with backfill migration from `experiences.company`; pure `groupExperiencesByCompany` in `app/lib/contributions.ts`; `contributions` layout route with company→position file tree plus `contributions/:experienceId` CodeMirror Markdown editor (SSR textarea fallback, preview, debounced `useFetcher` autosave, `useBlocker` dirty warning); redirect `profile/experiences/:id` to `contributions/:id`; then start in `app/db/schema.ts` `experiences` table.
