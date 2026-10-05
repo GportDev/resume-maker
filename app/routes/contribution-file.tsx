@@ -322,16 +322,17 @@ function ContributionEditor({
   async function onImport(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const files = Array.from(input.files ?? []);
-    input.value = "";
     setImportError("");
     if (!files.length) return;
     const tooLarge = files.find((file) => file.size > maxImportBytes);
     if (tooLarge) {
+      input.value = "";
       setImportError(`${tooLarge.name} is larger than 200 KB.`);
       return;
     }
     try {
       const texts = await Promise.all(files.map((file) => file.text()));
+      input.value = "";
       const untouchedTemplate = isNew && markdown === initialMarkdown;
       if (markdown.trim() && !untouchedTemplate) {
         setPendingImport({ texts, names: files.map((file) => file.name) });
