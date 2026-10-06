@@ -17,6 +17,7 @@ const now = new Date("2026-01-01T00:00:00Z");
 const experience = {
   id: experienceId,
   userId: "user-1",
+  companyId: "33333333-3333-4333-8333-333333333333",
   company: "Acme",
   position: "Engineer",
   startDate: "2024-01-01",

@@ -7,11 +7,12 @@ import {
 } from "ai";
 import { ZodError, type z } from "zod";
 
-import type { experiences, profiles } from "../db/schema";
+import type { profiles } from "../db/schema";
 import { type JobAnalysis, jobAnalysisSchema } from "./analysis";
+import type { ExperienceWithCompany } from "./contributions";
 import { resumeContentSchema } from "./resume";
 
-type Experience = typeof experiences.$inferSelect;
+type Experience = ExperienceWithCompany;
 type Profile = typeof profiles.$inferSelect;
 
 const structuredOutputAttempts = 2;

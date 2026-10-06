@@ -15,8 +15,50 @@ body {
 button,
 a,
 input,
+select,
+summary,
 textarea {
   @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400;
+}
+
+.cm-editor.cm-focused {
+  @apply outline-2 outline-offset-2 outline-cyan-400;
+}
+
+.markdown-preview {
+  @apply space-y-3 leading-7 text-slate-300;
+}
+
+.markdown-preview h1 {
+  @apply text-2xl font-semibold text-slate-100;
+}
+
+.markdown-preview h2 {
+  @apply mt-6 text-xl font-semibold text-slate-100 first:mt-0;
+}
+
+.markdown-preview h3 {
+  @apply mt-4 font-semibold text-slate-100;
+}
+
+.markdown-preview ul {
+  @apply list-disc space-y-1 pl-6;
+}
+
+.markdown-preview ol {
+  @apply list-decimal space-y-1 pl-6;
+}
+
+.markdown-preview strong {
+  @apply font-semibold text-slate-100;
+}
+
+.markdown-preview code {
+  @apply rounded bg-slate-800 px-1 py-0.5 text-sm;
+}
+
+.markdown-preview a {
+  @apply text-cyan-400 underline;
 }
 
 button:disabled {
