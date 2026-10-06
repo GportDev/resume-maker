@@ -262,6 +262,43 @@ export function applyPendingMove<Card extends BoardCard>(
   return next;
 }
 
+export type ApplicationCardData = BoardCard & {
+  companyName: string;
+  position: string;
+  location: string;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+  salaryPeriod: SalaryPeriod;
+  source: ApplicationSource;
+};
+
+const optionalId = z
+  .union([z.literal(""), z.uuid()])
+  .optional()
+  .transform((value) => value || undefined);
+
+export const moveInputSchema = z.object({
+  id: z.uuid(),
+  status: z.enum(applicationStatuses),
+  beforeId: optionalId,
+  afterId: optionalId,
+});
+
+export function parseMoveFormData(formData: FormData): PendingMove | null {
+  const field = (name: string) => {
+    const value = formData.get(name);
+    return typeof value === "string" ? value : undefined;
+  };
+  const parsed = moveInputSchema.safeParse({
+    id: field("id"),
+    status: field("status"),
+    beforeId: field("beforeId"),
+    afterId: field("afterId"),
+  });
+  return parsed.success ? parsed.data : null;
+}
+
 export function parseApplicationStatus(
   value: unknown,
 ): ApplicationStatus | null {
