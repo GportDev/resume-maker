@@ -51,6 +51,14 @@ describe("applicationInputSchema", () => {
     ]);
   });
 
+  it("explains missing required fields", () => {
+    const result = applicationInputSchema.safeParse({});
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual([
+      "Company name is required.",
+      "Position is required.",
+    ]);
+  });
+
   it("parses form salary strings, including separators", () => {
     const result = applicationInputSchema.parse({
       ...validInput,
