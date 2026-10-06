@@ -22,6 +22,8 @@ export default [
       route("companies/:companyId", "routes/contribution-company.tsx"),
       route(":experienceId", "routes/contribution-file.tsx"),
     ]),
+    route("applications", "routes/applications-board.tsx"),
+    route("applications/:applicationId", "routes/application-detail.tsx"),
     route("settings/ai", "routes/ai-settings.tsx"),
     route("settings/api-key", "routes/api-key-settings.tsx"),
     route("analyses/:analysisId", "routes/analysis-result.tsx"),
