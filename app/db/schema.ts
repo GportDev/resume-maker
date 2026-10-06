@@ -274,6 +274,10 @@ export const jobAnalyses = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id").references(
+      () => jobApplications.id,
+      { onDelete: "set null" },
+    ),
     jobDescription: text("job_description").notNull(),
     jobTitle: text("job_title").notNull(),
     companyName: text("company_name").default("").notNull(),
@@ -286,7 +290,10 @@ export const jobAnalyses = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [index("job_analyses_user_id_idx").on(table.userId)],
+  (table) => [
+    index("job_analyses_user_id_idx").on(table.userId),
+    index("job_analyses_application_id_idx").on(table.applicationId),
+  ],
 );
 
 export const resumes = pgTable(
@@ -296,6 +303,40 @@ export const resumes = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => jobAnalyses.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id").references(
+      () => jobApplications.id,
+      { onDelete: "set null" },
+    ),
+    title: text("title").notNull(),
+    content: jsonb("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("resumes_user_id_idx").on(table.userId),
+    index("resumes_analysis_id_idx").on(table.analysisId),
+    index("resumes_application_id_idx").on(table.applicationId),
+  ],
+);
+
+export const coverLetters = pgTable(
+  "cover_letters",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id").references(
+      () => jobApplications.id,
+      { onDelete: "set null" },
+    ),
     analysisId: uuid("analysis_id")
       .notNull()
       .references(() => jobAnalyses.id, { onDelete: "cascade" }),
@@ -309,8 +350,9 @@ export const resumes = pgTable(
       .notNull(),
   },
   (table) => [
-    index("resumes_user_id_idx").on(table.userId),
-    index("resumes_analysis_id_idx").on(table.analysisId),
+    index("cover_letters_user_id_idx").on(table.userId),
+    index("cover_letters_application_id_idx").on(table.applicationId),
+    index("cover_letters_analysis_id_idx").on(table.analysisId),
   ],
 );
 
