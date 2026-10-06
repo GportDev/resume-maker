@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  char,
   check,
   date,
+  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -15,6 +17,11 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { aiProviders } from "../lib/ai-providers";
+import {
+  applicationSources,
+  applicationStatuses,
+  salaryPeriods,
+} from "../lib/applications";
 
 export const user = pgTable(
   "user",
@@ -187,6 +194,75 @@ export const experiences = pgTable(
     check(
       "experiences_dates_check",
       sql`${table.isCurrent} OR (${table.endDate} IS NOT NULL AND ${table.endDate} >= ${table.startDate})`,
+    ),
+  ],
+);
+
+export const jobApplications = pgTable(
+  "job_applications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    companyName: text("company_name").notNull(),
+    position: text("position").notNull(),
+    location: text("location").default("").notNull(),
+    jobDescription: text("job_description").default("").notNull(),
+    salaryMin: integer("salary_min"),
+    salaryMax: integer("salary_max"),
+    salaryCurrency: char("salary_currency", { length: 3 })
+      .default("USD")
+      .notNull(),
+    salaryPeriod: text("salary_period", { enum: salaryPeriods })
+      .default("year")
+      .notNull(),
+    status: text("status", { enum: applicationStatuses })
+      .default("saved")
+      .notNull(),
+    sortOrder: doublePrecision("sort_order").notNull(),
+    source: text("source", { enum: applicationSources })
+      .default("manual")
+      .notNull(),
+    externalId: text("external_id"),
+    sourceUrl: text("source_url"),
+    notes: text("notes").default("").notNull(),
+    appliedAt: date("applied_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("job_applications_board_idx").on(
+      table.userId,
+      table.status,
+      table.sortOrder,
+    ),
+    uniqueIndex("job_applications_external_idx")
+      .on(table.userId, table.source, table.externalId)
+      .where(sql`${table.externalId} IS NOT NULL`),
+    check(
+      "job_applications_salary_check",
+      sql`(${table.salaryMin} IS NULL OR ${table.salaryMin} >= 0) AND (${table.salaryMax} IS NULL OR ${table.salaryMax} >= 0) AND (${table.salaryMin} IS NULL OR ${table.salaryMax} IS NULL OR ${table.salaryMin} <= ${table.salaryMax})`,
+    ),
+    check(
+      "job_applications_currency_check",
+      sql`${table.salaryCurrency} ~ '^[A-Z]{3}$'`,
+    ),
+    check(
+      "job_applications_salary_period_check",
+      sql`${table.salaryPeriod} IN ('year', 'month', 'hour')`,
+    ),
+    check(
+      "job_applications_status_check",
+      sql`${table.status} IN ('saved', 'applied', 'interviewing', 'offer', 'rejected', 'withdrawn')`,
+    ),
+    check(
+      "job_applications_source_check",
+      sql`${table.source} IN ('manual', 'linkedin')`,
     ),
   ],
 );
