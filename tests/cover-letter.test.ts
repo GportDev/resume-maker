@@ -36,7 +36,9 @@ describe("coverLetterContentSchema", () => {
   it("rejects paragraphs without citations", () => {
     const result = coverLetterContentSchema.safeParse({
       ...content,
-      bodyParagraphs: [{ ...content.bodyParagraphs[0], sourceExperienceIds: [] }],
+      bodyParagraphs: [
+        { ...content.bodyParagraphs[0], sourceExperienceIds: [] },
+      ],
     });
     expect(result.success).toBe(false);
   });

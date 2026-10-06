@@ -274,10 +274,9 @@ export const jobAnalyses = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    applicationId: uuid("application_id").references(
-      () => jobApplications.id,
-      { onDelete: "set null" },
-    ),
+    applicationId: uuid("application_id").references(() => jobApplications.id, {
+      onDelete: "set null",
+    }),
     jobDescription: text("job_description").notNull(),
     jobTitle: text("job_title").notNull(),
     companyName: text("company_name").default("").notNull(),
@@ -306,10 +305,9 @@ export const resumes = pgTable(
     analysisId: uuid("analysis_id")
       .notNull()
       .references(() => jobAnalyses.id, { onDelete: "cascade" }),
-    applicationId: uuid("application_id").references(
-      () => jobApplications.id,
-      { onDelete: "set null" },
-    ),
+    applicationId: uuid("application_id").references(() => jobApplications.id, {
+      onDelete: "set null",
+    }),
     title: text("title").notNull(),
     content: jsonb("content").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -333,10 +331,9 @@ export const coverLetters = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    applicationId: uuid("application_id").references(
-      () => jobApplications.id,
-      { onDelete: "set null" },
-    ),
+    applicationId: uuid("application_id").references(() => jobApplications.id, {
+      onDelete: "set null",
+    }),
     analysisId: uuid("analysis_id")
       .notNull()
       .references(() => jobAnalyses.id, { onDelete: "cascade" }),
