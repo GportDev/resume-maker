@@ -104,12 +104,14 @@ export function ApplicationBoard({
     }),
   );
 
-  function describePosition(id: UniqueIdentifier) {
+  function describePosition(activeId: UniqueIdentifier, targetId = activeId) {
     const current = idsRef.current;
-    const status = findColumn(current, id);
+    const status = findColumn(current, targetId);
     if (!status) return "";
-    const index = current[status].indexOf(String(id));
-    const total = current[status].length;
+    const column = current[status];
+    const includesActive = column.includes(String(activeId));
+    const total = includesActive ? column.length : column.length + 1;
+    const index = column.indexOf(String(targetId));
     const position = index === -1 ? total : index + 1;
     return `${applicationStatusLabels[status]} column, position ${position} of ${total}`;
   }
@@ -121,12 +123,12 @@ export function ApplicationBoard({
     onDragOver({ active, over }) {
       const label = cardLabel(cardsById.get(String(active.id)));
       if (!over) return `${label} is not over a column.`;
-      return `${label} moved to ${describePosition(active.id)}.`;
+      return `${label} moved to ${describePosition(active.id, over.id)}.`;
     },
     onDragEnd({ active, over }) {
       const label = cardLabel(cardsById.get(String(active.id)));
       if (!over) return `${label} dropped outside the board. No change.`;
-      return `${label} dropped in ${describePosition(active.id)}.`;
+      return `${label} dropped in ${describePosition(active.id, over.id)}.`;
     },
     onDragCancel({ active }) {
       const origin = originRef.current;
