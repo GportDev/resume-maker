@@ -178,9 +178,27 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
   - One route `applications/:applicationId` serves both `new` and existing ids (same pattern as contributions). Creating redirects to the new card's detail page.
   - Board move/delete actions return 404 data instead of throwing so a fetcher failure does not replace the board with the error boundary.
 
+## S11 — Tailoring + cover letter
+
+- Status: `IN_PROGRESS`
+- Depends on: S08, S10
+- Intent: tailor a resume and a new cover letter to one application's job description, show per-position keyword matches, and save both documents on the application card atomically.
+- Files: `PRD.md`, `app/db/schema.ts`, `drizzle/*`, `app/lib/analysis.ts`, `app/lib/keyword-match.ts`, `app/lib/cover-letter.ts`, `app/lib/applications.ts`, `app/lib/ai.server.ts`, `app/lib/tailoring.server.ts`, `app/lib/repositories.server.ts`, `app/components/analysis-summary.tsx`, `app/components/cover-letter-pdf.tsx`, `app/components/application-card.tsx`, `app/routes/application-tailor.tsx`, `app/routes/application-detail.tsx`, `app/routes/applications-board.tsx`, `app/routes/home.tsx`, `app/routes/analysis-result.tsx`, `app/routes/resume-editor.tsx`, `app/routes/cover-letter-editor.tsx`, `app/routes/cover-letter-pdf.tsx`, `app/routes.ts`, `tests/*`
+- Acceptance:
+  - `job_analyses.application_id` and `resumes.application_id`: nullable FKs to `job_applications` with `on delete set null` and indexes. New `cover_letters` table: owner FK (cascade), nullable `application_id` (set null), `analysis_id` (cascade), `title`, `content` jsonb, timestamps, owner/application/analysis indexes. RLS enabled and Supabase roles revoked.
+  - Pure `matchKeywordsToExperiences(analysis, experiences)` returns, per experience, `{ experienceId, matchedKeywords, matchedRequiredSkills }` plus global `unmatchedKeywords`, using `normalize` exported from `app/lib/analysis.ts`, whole-term matching, and deduplicated keywords.
+  - Pure `coverLetterContentSchema` (`recipient`, `opening`, `bodyParagraphs[{ text, sourceExperienceIds[] }]`, `closing`) requires at least one paragraph, each citing at least one experience; `sanitizeCoverLetterEvidence` drops unowned IDs and uncited paragraphs, failing when none remain; `applyCoverLetterEdits` replaces text and keeps citations.
+  - `generateCoverLetter({ model, profile, experiences, analysis, application })` uses structured output with one retry; system prompt forbids invented evidence and company facts beyond the job description and requires every paragraph to cite experience IDs.
+  - `app/lib/tailoring.server.ts`: `runTailoringAnalysis(userId, applicationId, jobDescription)` saves the job description on the application, analyzes it, sanitizes experience IDs, scores deterministically, and saves the analysis linked to the application. `generateTailoredDocuments(user, applicationId, analysisId)` generates the resume and cover letter in parallel, validates and sanitizes both, then inserts both in one transaction; if either fails, nothing is persisted. Dependencies (repositories, model resolver, logger) are injectable. Foreign or unlinked IDs return not-found.
+  - `/applications/:applicationId/tailor`: job description textarea prefilled from the application; intent `analyze` shows keyword chips, per-position match table, score factors, evidence, and gaps (shared `app/components/analysis-summary.tsx`); intent `generate` creates both documents and redirects to the application detail. Provider failures show a generic error.
+  - `/` is the quick-tailor entry: paste a job description and pick an existing application or create one (position/company from analysis), then redirect to the tailor page.
+  - `/cover-letters/:coverLetterId` edits recipient, opening, paragraphs, and closing with preview; `/cover-letters/:coverLetterId/pdf` downloads a selectable-text PDF (`app/components/cover-letter-pdf.tsx`, resume PDF styles).
+  - Board cards and application detail show the latest fit score, Resume and Cover letter links, and a Tailor action. `/analyses/:analysisId` stays as a read-only legacy view.
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:migrate` on local PostgreSQL; dev-server smoke of tailor page, documents on card, cover letter edit/PDF, and cross-user 404.
+
 ## Handoff
 
-- Current task: S10 `DONE`.
+- Current task: S11 `IN_PROGRESS`.
 - Last completed action: S10 application board implemented, unit-tested, migration-tested on local PostgreSQL, curl-smoke-tested with two users, and drag-and-drop verified in Chrome.
 - Verification: `pnpm test && pnpm typecheck && pnpm build && pnpm check` pass (114 tests, 10 files); `pnpm db:migrate` applies `0000`–`0004` locally.
 - Blockers: Supabase migration and live Anthropic/OpenAI generation not exercised; no Supabase `DATABASE_URL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` in environment.
