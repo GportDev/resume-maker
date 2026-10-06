@@ -1,17 +1,37 @@
-import { and, asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  max,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { z } from "zod";
 import {
   companies,
   experiences,
   jobAnalyses,
+  jobApplications,
   profiles,
   resumes,
   userApiCredentials,
   userSettings,
 } from "../db/schema";
 import type { AiProvider } from "./ai-providers";
+import {
+  type ApplicationInput,
+  type ApplicationSource,
+  type ApplicationStatus,
+  computeSortOrder,
+  type MovePlacement,
+  planMove,
+} from "./applications";
 import type { CompanyRecord, ExperienceWithCompany } from "./contributions";
-import { db } from "./db.server";
+import { type Database, db } from "./db.server";
 import type {
   companyInputSchema,
   experienceInputSchema,
@@ -242,6 +262,205 @@ export async function deleteExperience(userId: string, experienceId: string) {
     )
     .returning({ id: experiences.id });
   return experience;
+}
+
+const applicationBoardColumns = {
+  id: jobApplications.id,
+  companyName: jobApplications.companyName,
+  position: jobApplications.position,
+  location: jobApplications.location,
+  salaryMin: jobApplications.salaryMin,
+  salaryMax: jobApplications.salaryMax,
+  salaryCurrency: jobApplications.salaryCurrency,
+  salaryPeriod: jobApplications.salaryPeriod,
+  status: jobApplications.status,
+  sortOrder: jobApplications.sortOrder,
+  source: jobApplications.source,
+  appliedAt: jobApplications.appliedAt,
+  updatedAt: jobApplications.updatedAt,
+};
+
+export type ApplicationSummary = Awaited<
+  ReturnType<typeof listApplications>
+>[number];
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+function applicationOwner(userId: string, applicationId: string) {
+  return and(
+    eq(jobApplications.id, applicationId),
+    eq(jobApplications.userId, userId),
+  );
+}
+
+export async function listApplications(
+  userId: string,
+  options: { q?: string } = {},
+) {
+  const query = options.q?.trim();
+  const pattern = query ? `%${escapeLikePattern(query)}%` : undefined;
+  return db
+    .select(applicationBoardColumns)
+    .from(jobApplications)
+    .where(
+      and(
+        eq(jobApplications.userId, userId),
+        pattern
+          ? or(
+              ilike(jobApplications.companyName, pattern),
+              ilike(jobApplications.position, pattern),
+              ilike(jobApplications.location, pattern),
+            )
+          : undefined,
+      ),
+    )
+    .orderBy(asc(jobApplications.sortOrder), asc(jobApplications.createdAt));
+}
+
+export async function getApplication(userId: string, applicationId: string) {
+  return db.query.jobApplications.findFirst({
+    where: applicationOwner(userId, applicationId),
+  });
+}
+
+async function endOfColumnSortOrder(
+  executor: Pick<Database, "select">,
+  userId: string,
+  status: ApplicationStatus,
+): Promise<number> {
+  const [row] = await executor
+    .select({ last: max(jobApplications.sortOrder) })
+    .from(jobApplications)
+    .where(
+      and(
+        eq(jobApplications.userId, userId),
+        eq(jobApplications.status, status),
+      ),
+    );
+  return computeSortOrder(row?.last ?? undefined);
+}
+
+export async function createApplication(
+  userId: string,
+  input: ApplicationInput,
+  origin: {
+    source: ApplicationSource;
+    externalId?: string | null;
+  } = { source: "manual" },
+) {
+  const sortOrder = await endOfColumnSortOrder(db, userId, input.status);
+  const [application] = await db
+    .insert(jobApplications)
+    .values({
+      ...input,
+      ...origin,
+      userId,
+      sortOrder,
+    })
+    .returning();
+  return application;
+}
+
+export async function updateApplication(
+  userId: string,
+  applicationId: string,
+  input: ApplicationInput,
+) {
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({
+        status: jobApplications.status,
+        sortOrder: jobApplications.sortOrder,
+      })
+      .from(jobApplications)
+      .where(applicationOwner(userId, applicationId))
+      .for("update");
+    if (!current) return undefined;
+    const sortOrder =
+      current.status === input.status
+        ? current.sortOrder
+        : await endOfColumnSortOrder(tx, userId, input.status);
+    const [application] = await tx
+      .update(jobApplications)
+      .set({ ...input, sortOrder, updatedAt: new Date() })
+      .where(applicationOwner(userId, applicationId))
+      .returning();
+    return application;
+  });
+}
+
+export async function moveApplication(
+  userId: string,
+  applicationId: string,
+  status: ApplicationStatus,
+  sortOrder: number,
+) {
+  const [application] = await db
+    .update(jobApplications)
+    .set({ status, sortOrder, updatedAt: new Date() })
+    .where(applicationOwner(userId, applicationId))
+    .returning({ id: jobApplications.id });
+  return application;
+}
+
+export async function placeApplication(
+  userId: string,
+  applicationId: string,
+  status: ApplicationStatus,
+  placement: MovePlacement,
+): Promise<"moved" | "not-found" | "invalid"> {
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ id: jobApplications.id })
+      .from(jobApplications)
+      .where(applicationOwner(userId, applicationId))
+      .for("update");
+    if (!current) return "not-found";
+
+    const column = await tx
+      .select({ id: jobApplications.id, sortOrder: jobApplications.sortOrder })
+      .from(jobApplications)
+      .where(
+        and(
+          eq(jobApplications.userId, userId),
+          eq(jobApplications.status, status),
+        ),
+      )
+      .for("update");
+    const plan = planMove(column, applicationId, placement);
+    if (plan.kind === "invalid") return "invalid";
+
+    const now = new Date();
+    if (plan.kind === "place") {
+      await tx
+        .update(jobApplications)
+        .set({ status, sortOrder: plan.sortOrder, updatedAt: now })
+        .where(applicationOwner(userId, applicationId));
+      return "moved";
+    }
+
+    for (const order of plan.orders) {
+      await tx
+        .update(jobApplications)
+        .set(
+          order.id === applicationId
+            ? { status, sortOrder: order.sortOrder, updatedAt: now }
+            : { sortOrder: order.sortOrder },
+        )
+        .where(applicationOwner(userId, order.id));
+    }
+    return "moved";
+  });
+}
+
+export async function deleteApplication(userId: string, applicationId: string) {
+  const [application] = await db
+    .delete(jobApplications)
+    .where(applicationOwner(userId, applicationId))
+    .returning({ id: jobApplications.id });
+  return application;
 }
 
 export async function listAnalyses(userId: string) {

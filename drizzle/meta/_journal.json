@@ -29,6 +29,13 @@
       "when": 1791233477031,
       "tag": "0003_drop_experience_company_text",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791252107421,
+      "tag": "0004_job_applications",
+      "breakpoints": true
     }
   ]
 }

@@ -43,6 +43,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
           <nav className="flex items-center gap-1" aria-label="Main navigation">
             {[
               ["/", "Analyze"],
+              ["/applications", "Applications"],
               ["/contributions", "Contributions"],
               ["/profile", "Profile"],
               ["/settings/ai", "AI settings"],

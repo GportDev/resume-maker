@@ -31,6 +31,12 @@ Personalized Resume converts a user's verified work history into a job-specific,
 3. Reuse current experiences.
 4. Review prior analyses and resumes.
 
+### Tracking applications
+
+1. Add an application with company, position, location, job description, and salary range.
+2. Move its card across board columns as status changes.
+3. Filter the board and open a card to edit details or notes.
+
 ## MVP requirements
 
 ### Authentication
@@ -56,6 +62,16 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Changes autosave after a short pause; status shows saved or unsaved; leaving with unsaved changes asks for confirmation.
 - Import one or more `.md` files into a position (append or replace, with confirmation); export each position as `.md`.
 - Company can be renamed or edited; deletion only allowed when it has no positions and requires explicit confirmation.
+
+### Job application tracking
+
+- Application: company name, position, location, job description, optional salary range (min, max, currency, period), status, notes, applied date.
+- Statuses: Saved, Applied, Interviewing, Offer, Rejected, Withdrawn.
+- Board shows one column per status; cards show position, company, location, salary range, and status.
+- Cards move between columns and reorder within a column by drag-and-drop (pointer and keyboard, with screen-reader announcements); a per-card status select works without JavaScript.
+- Text filter narrows cards by company, position, or location.
+- Create and edit applications on a detail page; deletion requires explicit confirmation.
+- Applications record source (`manual` now; LinkedIn later) and keep room for tailored resume, cover letter, and match results.
 
 ### AI provider and API key settings
 
@@ -96,6 +112,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Profile: one per user.
 - Company: many per user; groups experiences.
 - Experience: many per user; belongs to one owned company.
+- Job application: many per user; status, fractional board order, salary range, and source with optional external ID unique per user and source.
 - Job analysis: immutable job input plus structured analysis and score.
 - Resume: editable generated snapshot linked to analysis.
 - User API credential: encrypted provider secret metadata, at most one active key per provider per user.
