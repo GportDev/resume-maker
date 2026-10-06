@@ -151,9 +151,26 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
   - Export moved to resource route `contributions/:experienceId/download` (returning a `Response` from a UI route loader is treated as data in React Router 8 and crashed the page); `?download=1` redirects there.
   - CodeMirror is lazy-loaded (`app/components/codemirror-markdown.tsx`, ~211 kB gzip chunk) only on the editor route.
 
+## S10 — Application board
+
+- Status: `IN_PROGRESS`
+- Depends on: S09
+- Intent: track job applications on a Kanban board with accessible drag-and-drop and a detail page ready for tailored documents and match results.
+- Files: `PRD.md`, `package.json`, `app/db/schema.ts`, `drizzle/*`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/components/application-card.tsx`, `app/components/application-board.tsx`, `app/routes/applications-board.tsx`, `app/routes/application-detail.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
+- Acceptance:
+  - `job_applications` table: owner FK (cascade), `company_name`, `position`, `location`, `job_description`, nullable integer `salary_min`/`salary_max`, `salary_currency` char(3) default `USD`, `salary_period` in `year|month|hour`, `status` in `saved|applied|interviewing|offer|rejected|withdrawn`, double `sort_order`, `source` in `manual|linkedin`, nullable `external_id`/`source_url`, `notes`, nullable `applied_at`, timestamps.
+  - Database checks: salaries non-negative and `salary_min <= salary_max`; enum checks for status, period, source, and currency format. Index `(user_id, status, sort_order)`; partial unique `(user_id, source, external_id) where external_id is not null`. RLS enabled and Supabase roles revoked.
+  - Pure `app/lib/applications.ts`: `applicationStatuses` with labels; `applicationInputSchema` requires company name and position, validates salary order, non-negative integers, ISO 4217-style uppercase currency, period, status, optional `https?` source URL, applied date; `formatSalaryRange` uses `Intl.NumberFormat` and handles min-only, max-only, equal, and empty ranges; `computeSortOrder(before?, after?)` returns midpoint/edge values and `needsRebalance` flags exhausted gaps; `groupApplicationsByStatus` orders cards by `sort_order`.
+  - Repository methods `listApplications(userId, { q })`, `getApplication`, `createApplication` (appends to end of status column), `updateApplication`, `moveApplication(userId, id, status, sortOrder)`, `deleteApplication` all include the owner condition; moving rebalances a column when gaps are exhausted.
+  - `/applications` shows one column per status with per-column and whole-board empty states; `?q=` filters by company, position, or location; action intents `move` (validated status/neighbour ids) and `delete` (requires confirmation); foreign IDs return 404.
+  - Drag-and-drop via dnd-kit with pointer and keyboard sensors and screen-reader announcements; drop submits `intent=move` through a fetcher and shows optimistic placement from `fetcher.formData`; each card has a status `<select>` form that works without JavaScript; columns scroll horizontally on small screens.
+  - `/applications/new` and `/applications/:applicationId` edit all fields (job description textarea, salary min/max/currency/period, status, notes, applied date); detail layout reserves Resume, Cover letter, and Match sections; delete requires confirmation checkbox.
+  - Nav includes Applications.
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:migrate` on local PostgreSQL; dev-server smoke of create/move/filter/delete and cross-user 404.
+
 ## Handoff
 
-- Current task: S09 `DONE`.
+- Current task: S10 `IN_PROGRESS`.
 - Last completed action: S09 contributions workspace implemented, unit-tested, migration-tested on seeded local PostgreSQL, and smoke-tested via curl and browser.
 - Verification: `pnpm test && pnpm typecheck && pnpm build && pnpm check` pass (68 tests, 9 files); `pnpm db:migrate` applies `0000`–`0003` locally.
 - Blockers: Supabase migration and live Anthropic/OpenAI generation not exercised; no Supabase `DATABASE_URL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` in environment.
