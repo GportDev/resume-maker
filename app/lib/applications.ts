@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { scoreBreakdownSchema } from "./analysis";
+
 export const applicationStatuses = [
   "saved",
   "applied",
@@ -279,7 +281,27 @@ export type ApplicationCardData = BoardCard & {
   salaryCurrency: string;
   salaryPeriod: SalaryPeriod;
   source: ApplicationSource;
+  documents?: ApplicationDocuments;
 };
+
+export type ApplicationDocuments = {
+  fitScore: number | null;
+  resumeId: string | null;
+  coverLetterId: string | null;
+};
+
+export function toApplicationDocuments(
+  summary:
+    | { score: unknown; resumeId: string | null; coverLetterId: string | null }
+    | undefined,
+): ApplicationDocuments {
+  const score = scoreBreakdownSchema.safeParse(summary?.score);
+  return {
+    fitScore: score.success ? score.data.total : null,
+    resumeId: summary?.resumeId ?? null,
+    coverLetterId: summary?.coverLetterId ?? null,
+  };
+}
 
 const optionalId = z
   .union([z.literal(""), z.uuid()])

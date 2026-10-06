@@ -26,6 +26,57 @@ export function StatusBadge({ status }: { status: ApplicationStatus }) {
   );
 }
 
+export function FitBadge({ score }: { score: number }) {
+  return (
+    <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-xs font-medium text-cyan-300">
+      <span className="sr-only">Fit estimate </span>Fit {score}
+    </span>
+  );
+}
+
+const documentLinkClass =
+  "rounded text-cyan-400 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-400";
+
+function DocumentLinks({ application }: { application: ApplicationCardData }) {
+  const documents = application.documents;
+  const label = `${application.position} at ${application.companyName}`;
+  return (
+    <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+      <li>
+        <Link
+          to={`/applications/${application.id}/tailor`}
+          aria-label={`Tailor ${label}`}
+          className={documentLinkClass}
+        >
+          Tailor
+        </Link>
+      </li>
+      {documents?.resumeId ? (
+        <li>
+          <Link
+            to={`/resumes/${documents.resumeId}`}
+            aria-label={`Resume for ${label}`}
+            className={documentLinkClass}
+          >
+            Resume
+          </Link>
+        </li>
+      ) : null}
+      {documents?.coverLetterId ? (
+        <li>
+          <Link
+            to={`/cover-letters/${documents.coverLetterId}`}
+            aria-label={`Cover letter for ${label}`}
+            className={documentLinkClass}
+          >
+            Cover letter
+          </Link>
+        </li>
+      ) : null}
+    </ul>
+  );
+}
+
 export function ApplicationCard({
   application,
   dragHandle,
@@ -83,8 +134,12 @@ export function ApplicationCard({
             LinkedIn
           </span>
         ) : null}
+        {application.documents?.fitScore != null ? (
+          <FitBadge score={application.documents.fitScore} />
+        ) : null}
         {badges}
       </div>
+      <DocumentLinks application={application} />
       {actions ? <div className="mt-3">{actions}</div> : null}
     </article>
   );
