@@ -33,5 +33,7 @@ export default [
     route("analyses/:analysisId", "routes/analysis-result.tsx"),
     route("resumes/:resumeId", "routes/resume-editor.tsx"),
     route("resumes/:resumeId/pdf", "routes/resume-pdf.tsx"),
+    route("cover-letters/:coverLetterId", "routes/cover-letter-editor.tsx"),
+    route("cover-letters/:coverLetterId/pdf", "routes/cover-letter-pdf.tsx"),
   ]),
 ] satisfies RouteConfig;

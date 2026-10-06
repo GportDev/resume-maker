@@ -34,6 +34,32 @@ export function sanitizeCoverLetterEvidence(
   });
 }
 
+export type CoverLetterSender = {
+  fullName: string;
+  email: string;
+  phone: string;
+  location: string;
+};
+
+export function resolveCoverLetterSender(
+  profile: Partial<CoverLetterSender> | undefined,
+  account: { name: string; email: string },
+): CoverLetterSender {
+  return {
+    fullName: profile?.fullName || account.name,
+    email: profile?.email || account.email,
+    phone: profile?.phone ?? "",
+    location: profile?.location ?? "",
+  };
+}
+
+export function formatLetterDate(value: Date): string {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(value);
+}
+
 export const coverLetterEditSchema = z.object({
   title: z.string().trim().min(1, "Title is required.").max(160),
   recipient: z.string().trim().min(1, "Recipient is required.").max(200),
