@@ -25,6 +25,21 @@ export const jobAnalysisSchema = z.object({
 
 export type JobAnalysis = z.infer<typeof jobAnalysisSchema>;
 
+export const jobDescriptionMinLength = 200;
+export const jobDescriptionMaxLength = 30_000;
+
+export const jobDescriptionInputSchema = z
+  .string({ error: "Paste a job description." })
+  .trim()
+  .min(
+    jobDescriptionMinLength,
+    `Paste a job description with at least ${jobDescriptionMinLength} characters.`,
+  )
+  .max(
+    jobDescriptionMaxLength,
+    `Job description must be at most ${jobDescriptionMaxLength.toLocaleString("en")} characters.`,
+  );
+
 export const scoreBreakdownSchema = z.object({
   total: z.number().int().min(0).max(100),
   keywordCoverage: z.number().int().min(0).max(25),

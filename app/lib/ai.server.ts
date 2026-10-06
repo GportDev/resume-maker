@@ -10,6 +10,7 @@ import { ZodError, type z } from "zod";
 import type { profiles } from "../db/schema";
 import { type JobAnalysis, jobAnalysisSchema } from "./analysis";
 import type { ExperienceWithCompany } from "./contributions";
+import { coverLetterContentSchema } from "./cover-letter";
 import { resumeContentSchema } from "./resume";
 
 type Experience = ExperienceWithCompany;
@@ -118,6 +119,55 @@ export async function generateResume(input: {
         location: input.profile?.location || "",
         website: input.profile?.website || "",
         linkedin: input.profile?.linkedin || "",
+      },
+      experiences: input.experiences.map((experience) => ({
+        experienceId: experience.id,
+        company: experience.company,
+        position: experience.position,
+        startDate: experience.startDate,
+        endDate: experience.endDate,
+        isCurrent: experience.isCurrent,
+        evidence: experience.markdown,
+      })),
+    }),
+  });
+}
+
+export async function generateCoverLetter(input: {
+  model: LanguageModel;
+  profile: Profile | undefined;
+  experiences: Experience[];
+  analysis: JobAnalysis;
+  application: {
+    companyName: string;
+    position: string;
+    location: string;
+    jobDescription: string;
+  };
+}) {
+  return generateStructured({
+    model: input.model,
+    schema: coverLetterContentSchema,
+    system: [
+      "Write a concise, specific cover letter from verified evidence only.",
+      "Never invent metrics, tools, skills, employers, positions, dates, or personal motivations.",
+      "State nothing about the company beyond what the job description says.",
+      "Every body paragraph must cite sourceExperienceIds from supplied evidence.",
+      "Use two to four body paragraphs in plain professional language without placeholders.",
+      "Recipient is a greeting line such as the hiring team at the company; do not guess a person's name.",
+      "Do not claim missing skills.",
+    ].join(" "),
+    prompt: JSON.stringify({
+      targetJob: {
+        position: input.application.position,
+        companyName: input.application.companyName,
+        location: input.application.location,
+        jobDescription: input.application.jobDescription,
+        analysis: input.analysis,
+      },
+      candidate: {
+        fullName: input.profile?.fullName ?? "",
+        headline: input.profile?.headline ?? "",
       },
       experiences: input.experiences.map((experience) => ({
         experienceId: experience.id,
