@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   analyzeJob,
+  generateCoverLetter,
   generateResume,
   StructuredOutputError,
 } from "../app/lib/ai.server";
 import type { JobAnalysis } from "../app/lib/analysis";
+import type { CoverLetterContent } from "../app/lib/cover-letter";
 import type { ResumeContent } from "../app/lib/resume";
 
 type GenerateResult = Awaited<ReturnType<MockLanguageModelV4["doGenerate"]>>;
@@ -190,6 +192,63 @@ describe("generateResume", () => {
     await expect(generateResume({ ...input, model })).rejects.toBeInstanceOf(
       StructuredOutputError,
     );
+    expect(calls()).toBe(2);
+  });
+});
+
+describe("generateCoverLetter", () => {
+  const coverLetter: CoverLetterContent = {
+    recipient: "Hiring team at Globex",
+    opening:
+      "I am applying for the Senior Engineer role at Globex to build reliable services.",
+    bodyParagraphs: [
+      {
+        text: "At Acme I built TypeScript services handling 1M requests per day.",
+        sourceExperienceIds: [experienceId],
+      },
+    ],
+    closing: "Thank you for your time and consideration.",
+  };
+  const input = {
+    profile: undefined,
+    experiences: [experience],
+    analysis,
+    application: {
+      companyName: "Globex",
+      position: "Senior Engineer",
+      location: "Remote",
+      jobDescription: "Senior Engineer role requiring TypeScript.",
+    },
+  };
+
+  it("returns a validated cover letter", async () => {
+    const { model } = mockModel([JSON.stringify(coverLetter)]);
+
+    await expect(generateCoverLetter({ ...input, model })).resolves.toEqual(
+      coverLetter,
+    );
+  });
+
+  it("sends the job description and evidence, and forbids invented facts", async () => {
+    const { model } = mockModel([JSON.stringify(coverLetter)]);
+
+    await generateCoverLetter({ ...input, model });
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt);
+    expect(prompt).toContain("Senior Engineer role requiring TypeScript.");
+    expect(prompt).toContain(experienceId);
+    expect(prompt).toContain("beyond what the job description says");
+  });
+
+  it("rejects uncited paragraphs after one retry", async () => {
+    const uncited = JSON.stringify({
+      ...coverLetter,
+      bodyParagraphs: [{ text: coverLetter.bodyParagraphs[0]?.text }],
+    });
+    const { model, calls } = mockModel([uncited]);
+
+    await expect(
+      generateCoverLetter({ ...input, model }),
+    ).rejects.toBeInstanceOf(StructuredOutputError);
     expect(calls()).toBe(2);
   });
 });
