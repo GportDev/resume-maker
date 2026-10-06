@@ -80,8 +80,16 @@ const optionalHttpUrl = z
 
 export const applicationInputSchema = z
   .object({
-    companyName: z.string().trim().min(1, "Company name is required.").max(160),
-    position: z.string().trim().min(1, "Position is required.").max(160),
+    companyName: z
+      .string({ error: "Company name is required." })
+      .trim()
+      .min(1, "Company name is required.")
+      .max(160),
+    position: z
+      .string({ error: "Position is required." })
+      .trim()
+      .min(1, "Position is required.")
+      .max(160),
     location: z.string().trim().max(160).default(""),
     jobDescription: z.string().trim().max(50_000).default(""),
     salaryMin: salaryAmountSchema,
