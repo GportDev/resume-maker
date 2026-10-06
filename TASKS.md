@@ -153,7 +153,7 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
 
 ## S10 — Application board
 
-- Status: `IN_PROGRESS`
+- Status: `DONE`
 - Depends on: S09
 - Intent: track job applications on a Kanban board with accessible drag-and-drop and a detail page ready for tailored documents and match results.
 - Files: `PRD.md`, `package.json`, `app/db/schema.ts`, `drizzle/*`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/components/application-card.tsx`, `app/components/application-board.tsx`, `app/routes/applications-board.tsx`, `app/routes/application-detail.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
