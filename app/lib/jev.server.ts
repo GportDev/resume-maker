@@ -10,12 +10,10 @@ const apiQuestionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("choice"),
     instructions,
-    criteria: z
-      .record(z.string().min(1), z.string())
-      .refine((criteria) => {
-        const count = Object.keys(criteria).length;
-        return count >= 2 && count <= 255;
-      }, "Choice questions need 2 to 255 options."),
+    criteria: z.record(z.string().min(1), z.string()).refine((criteria) => {
+      const count = Object.keys(criteria).length;
+      return count >= 2 && count <= 255;
+    }, "Choice questions need 2 to 255 options."),
   }),
   z.object({
     type: z.literal("score"),
@@ -149,7 +147,11 @@ function toMatchAnswer(
       return {
         type: "choice",
         choice: answer.choice,
-        probabilities: answer.probabilities,
+        probabilities: Object.fromEntries(
+          Object.entries(answer.probabilities).filter(([option]) =>
+            Object.hasOwn(question.criteria, option),
+          ),
+        ),
         confidence: answer.confidence ?? null,
       };
     case "score":
