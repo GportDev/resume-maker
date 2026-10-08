@@ -18,6 +18,10 @@ vi.mock("../app/lib/repositories.server", () => {
     createAnalysis: unused,
     createApplicationWithAnalysis: unused,
     createTailoredDocuments: unused,
+    createJobMatch: unused,
+    getJobMatch: unused,
+    getLatestAnalysisJobMatch: unused,
+    updateJobMatchResult: unused,
     getUserApiCredential: unused,
     getUserSettings: unused,
   };
@@ -202,6 +206,12 @@ function createDeps(model: MockLanguageModelV4) {
       async () => ({ model, provider: "anthropic" }),
     ),
     logProviderError: vi.fn<TailoringDeps["logProviderError"]>(),
+    runJobMatch: vi.fn<TailoringDeps["runJobMatch"]>(async () => ({
+      ok: false,
+    })),
+    getLatestAnalysisJobMatch: vi.fn<
+      TailoringDeps["getLatestAnalysisJobMatch"]
+    >(async () => undefined),
   } satisfies TailoringDeps;
 }
 

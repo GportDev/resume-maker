@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { scoreBreakdownSchema } from "./analysis";
+import { type JobMatchSummary, jobMatchSummarySchema } from "./job-match";
 
 export const applicationStatuses = [
   "saved",
@@ -288,18 +289,26 @@ export type ApplicationDocuments = {
   fitScore: number | null;
   resumeId: string | null;
   coverLetterId: string | null;
+  match: JobMatchSummary | null;
 };
 
 export function toApplicationDocuments(
   summary:
-    | { score: unknown; resumeId: string | null; coverLetterId: string | null }
+    | {
+        score: unknown;
+        resumeId: string | null;
+        coverLetterId: string | null;
+        match?: unknown;
+      }
     | undefined,
 ): ApplicationDocuments {
   const score = scoreBreakdownSchema.safeParse(summary?.score);
+  const match = jobMatchSummarySchema.safeParse(summary?.match);
   return {
     fitScore: score.success ? score.data.total : null,
     resumeId: summary?.resumeId ?? null,
     coverLetterId: summary?.coverLetterId ?? null,
+    match: match.success ? match.data : null,
   };
 }
 

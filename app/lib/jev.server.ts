@@ -276,6 +276,10 @@ export function createJevClient(options: JevClientOptions): JevClient {
   };
 }
 
+export function isJevConfigured(): boolean {
+  return Boolean(getServerEnv().TYPESAFE_API_KEY);
+}
+
 export function getJevClient(): JevClient | null {
   const env = getServerEnv();
   if (!env.TYPESAFE_API_KEY) return null;

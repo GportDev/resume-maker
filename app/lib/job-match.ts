@@ -617,6 +617,12 @@ export function reconcileAnalysisMatches(
   return { matches: kept, verification, verifiedEvidence };
 }
 
+export const matchOverrideInputSchema = z.object({
+  matchId: z.uuid(),
+  requirementId: z.string().regex(/^(req|pref)_\d+$/),
+  decision: z.enum(["accept", "reject", "clear"]),
+});
+
 export const jobMatchSummarySchema = jobMatchResultSchema.pick({
   matchScore: true,
   recommendation: true,
