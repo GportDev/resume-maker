@@ -208,9 +208,26 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
   - `/analyses/:analysisId` is read-only; the old standalone `createResume` path was removed, so documents are only created through `createTailoredDocuments`.
   - Cover letter sender name/email/contact come from the profile or account at render time, not stored in `content`.
 
+## S12 — Jev job match
+
+- Status: `IN_PROGRESS`
+- Depends on: S10, S11
+- Intent: use TypeSafe Jev typed decisions to verify which stored position demonstrates each job requirement, turn them into a deterministic match result with review flags, and feed only verified evidence into resume and cover letter generation.
+- Files: `PRD.md`, `.env.example`, `app/lib/env.server.ts`, `app/lib/jev.server.ts`, `app/lib/job-match.ts`, `app/lib/job-match.server.ts`, `app/lib/tailoring.server.ts`, `app/lib/ai.server.ts`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/db/schema.ts`, `drizzle/*`, `app/components/job-match-panel.tsx`, `app/components/application-card.tsx`, `app/components/analysis-summary.tsx`, `app/routes/application-detail.tsx`, `app/routes/application-tailor.tsx`, `app/routes/applications-board.tsx`, `tests/*`
+- Acceptance:
+  - Env: optional `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` default `jev-latest`, optional `TYPESAFE_BASE_URL` default `https://api.typesafe.ai`. App boots and tailors without them.
+  - `app/lib/jev.server.ts`: `JevClient.systemOne({ state, questions })` posts to `/v1/systemone` with bearer key and model; Zod validates request and response (`model`, `answers` per question ID with `choice`/`probabilities`/`confidence`, `score`/`confidence`, `noul`; `usage`); answers missing or of the wrong type are rejected; API `noul` is normalized to a `boolean` answer with `probability`. Retries 429/529 up to 3 attempts with bounded exponential backoff honoring `Retry-After`; no retry on 401/422 or other statuses; request timeout. Logs only status, model version, and token usage.
+  - Pure `app/lib/job-match.ts`: `buildMatchQuestions(analysis, experiences)` emits stable IDs `req_<i>`/`pref_<i>` as `choice` questions keyed by experience ID plus `none` (max 255 options), `seniority` (`score`, 4-level rubric), `domainFit` (`boolean`); `buildMatchState` and `chunkExperiences` keep each call under the state token budget (~chars/4) and option limit; `mergeChunkAnswers` keeps the highest-probability position, the lowest `none` probability, the highest seniority, and the highest domain-fit probability; `evaluateMatchPolicy` marks requirements verified (choice ≠ none, p ≥ 0.7, confidence ≥ 0.6), missing (none p ≥ 0.7), else needs review (including missing answers or confidence); `scoreMatch` computes 0–100 (required 70, preferred 15, seniority 15) and recommendation `strong_match | worth_tailoring | weak_match | needs_review` with overrides applied; thresholds and `QUESTION_VERSION` are named constants; `reconcileAnalysisMatches` splits analysis matches into verified and unverified.
+  - `job_matches` table: owner FK (cascade), nullable `application_id` (set null), `analysis_id` (cascade), `model_version`, `question_version`, `answers` jsonb, `result` jsonb, timestamps, owner/application/analysis indexes. RLS enabled and Supabase roles revoked. Repositories require `userId`; insert checks application ownership and analysis link in one transaction; jsonb is Zod-validated on read.
+  - `app/lib/job-match.server.ts`: `runJobMatch(userId, applicationId, analysisId)` returns not-found for foreign or unlinked IDs, not-configured without a key, and a generic failure on client errors (safe diagnostics logged); persists answers and result. `setJobMatchOverride` accepts or rejects only needs-review requirements and recomputes the score.
+  - Tailoring: when Jev is configured, analysis runs the match after saving (match failure does not fail analysis). Generation uses the latest match for the analysis: only verified pairs are sent as matches and as `verifiedEvidence`; without a match, behavior is unchanged.
+  - Application detail: Match section with recommendation, match %, seniority and domain fit, per-requirement chosen position, probability, and review flag; accept/reject for needs-review items; Run match action; heuristic disclaimer. Tailor page flags unverified analysis matches. Board card shows recommendation and match %.
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:generate` reports no changes after the migration.
+
 ## Handoff
 
-- Current task: S11 `DONE`.
+- Current task: S12 `IN_PROGRESS`.
+- Previous task: S11 `DONE`.
 - Last completed action: S11 tailoring + cover letter implemented, unit-tested, migration-tested on local PostgreSQL, curl-smoke-tested with two users against a fake Anthropic server, and verified in Chrome.
 - Verification: `pnpm test && pnpm typecheck && pnpm build && pnpm check` pass (147 tests, 13 files); `pnpm db:migrate` applies `0000`–`0005` locally.
 - Blockers: Supabase migration and live Anthropic/OpenAI generation not exercised; no Supabase `DATABASE_URL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` in environment.
