@@ -353,6 +353,37 @@ export const coverLetters = pgTable(
   ],
 );
 
+export const jobMatches = pgTable(
+  "job_matches",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id").references(() => jobApplications.id, {
+      onDelete: "set null",
+    }),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => jobAnalyses.id, { onDelete: "cascade" }),
+    modelVersion: text("model_version").notNull(),
+    questionVersion: text("question_version").notNull(),
+    answers: jsonb("answers").notNull(),
+    result: jsonb("result").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("job_matches_user_id_idx").on(table.userId),
+    index("job_matches_application_id_idx").on(table.applicationId),
+    index("job_matches_analysis_id_idx").on(table.analysisId),
+  ],
+);
+
 export const userApiCredentials = pgTable(
   "user_api_credentials",
   {
