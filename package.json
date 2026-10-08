@@ -27,6 +27,7 @@
     "@react-pdf/renderer": "^4.5.1",
     "@react-router/node": "8.0.0",
     "@react-router/serve": "8.0.0",
+    "@supabase/supabase-js": "^2.117.3",
     "@uiw/react-codemirror": "^4.25.12",
     "ai": "^7.0.127",
     "better-auth": "^1.6.23",
@@ -52,5 +53,6 @@
     "typescript": "^5.9.3",
     "vite": "^8.0.3",
     "vitest": "^4.1.10"
-  }
+  },
+  "packageManager": "pnpm@12.10.1+sha512.ba40a37eb1a370d60fea8c4cf1d364c13bcccef518e98ad2bcee954f539d38da37458e58261a3fa55e06523450ea0ffff9f497b135be41f2c15c1642bacace6c"
 }
