@@ -25,6 +25,21 @@ export const jobAnalysisSchema = z.object({
 
 export type JobAnalysis = z.infer<typeof jobAnalysisSchema>;
 
+export const jobDescriptionMinLength = 200;
+export const jobDescriptionMaxLength = 30_000;
+
+export const jobDescriptionInputSchema = z
+  .string({ error: "Paste a job description." })
+  .trim()
+  .min(
+    jobDescriptionMinLength,
+    `Paste a job description with at least ${jobDescriptionMinLength} characters.`,
+  )
+  .max(
+    jobDescriptionMaxLength,
+    `Job description must be at most ${jobDescriptionMaxLength.toLocaleString("en")} characters.`,
+  );
+
 export const scoreBreakdownSchema = z.object({
   total: z.number().int().min(0).max(100),
   keywordCoverage: z.number().int().min(0).max(25),
@@ -36,7 +51,7 @@ export const scoreBreakdownSchema = z.object({
 
 export type ScoreBreakdown = z.infer<typeof scoreBreakdownSchema>;
 
-function normalize(value: string): string {
+export function normalize(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^\p{L}\p{N}+#.]+/gu, " ")
@@ -129,6 +144,40 @@ export function calculateAtsScore(input: {
       100,
       Object.values(breakdown).reduce((sum, value) => sum + value, 0),
     ),
+  });
+}
+
+export const profileScoreFields = [
+  "fullName",
+  "headline",
+  "email",
+  "phone",
+  "location",
+  "website",
+  "linkedin",
+] as const;
+
+type ProfileScoreInput = Partial<
+  Record<(typeof profileScoreFields)[number], string>
+>;
+
+export function scoreAnalysisAgainstEvidence(input: {
+  analysis: JobAnalysis;
+  profile: ProfileScoreInput | undefined;
+  experiences: { position: string; company: string; markdown: string }[];
+}): ScoreBreakdown {
+  return calculateAtsScore({
+    analysis: input.analysis,
+    experienceText: input.experiences
+      .map(
+        (experience) =>
+          `${experience.position} ${experience.company} ${experience.markdown}`,
+      )
+      .join("\n"),
+    profileFieldsCompleted: profileScoreFields.filter(
+      (field) => input.profile?.[field],
+    ).length,
+    profileFieldCount: profileScoreFields.length,
   });
 }
 

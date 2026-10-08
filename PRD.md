@@ -71,7 +71,17 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Cards move between columns and reorder within a column by drag-and-drop (pointer and keyboard, with screen-reader announcements); a per-card status select works without JavaScript.
 - Text filter narrows cards by company, position, or location.
 - Create and edit applications on a detail page; deletion requires explicit confirmation.
-- Applications record source (`manual` now; LinkedIn later) and keep room for tailored resume, cover letter, and match results.
+- Applications record source (`manual` now; LinkedIn later).
+- Cards and detail page show the latest fit score and links to the latest tailored resume and cover letter, plus a Tailor action.
+
+### Tailoring and cover letter
+
+- Tailor page belongs to one application; its job description is prefilled from the application and editable.
+- Analysis step shows ATS keywords, which keywords and required skills each past or current position matches, unmatched keywords, score factors, and gaps.
+- Generation step rewrites the resume and writes a cover letter from verified evidence, then saves both on the application in one step.
+- Home page is a quick-tailor entry: paste a job description, then pick an existing application or create one from the analysis.
+- Cover letter: recipient, opening, cited body paragraphs, and closing; editable, with ATS-safe preview and selectable-text PDF download.
+- Cover letters never invent company facts beyond the job description or candidate facts beyond stored evidence.
 
 ### AI provider and API key settings
 
@@ -103,7 +113,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 
 ## Non-goals
 
-- Stripe billing, team workspaces, recruiter portal, job-board scraping, cover letters, DOCX export, AI providers beyond Anthropic and OpenAI, vector search, and automatic application submission.
+- Stripe billing, team workspaces, recruiter portal, job-board scraping, DOCX export, AI providers beyond Anthropic and OpenAI, vector search, and automatic application submission.
 - Predicting actual recruiter decisions or guaranteeing ATS passage.
 
 ## Data entities
@@ -113,8 +123,9 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Company: many per user; groups experiences.
 - Experience: many per user; belongs to one owned company.
 - Job application: many per user; status, fractional board order, salary range, and source with optional external ID unique per user and source.
-- Job analysis: immutable job input plus structured analysis and score.
-- Resume: editable generated snapshot linked to analysis.
+- Job analysis: immutable job input plus structured analysis and score; optionally linked to an application.
+- Resume: editable generated snapshot linked to analysis and optionally to an application.
+- Cover letter: editable generated snapshot linked to analysis and optionally to an application.
 - User API credential: encrypted provider secret metadata, at most one active key per provider per user.
 - User settings: one per user; preferred AI provider.
 
@@ -134,6 +145,8 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - User completes full core flow from sign-up through PDF.
 - AI response failing schema validation produces actionable error and no partial persisted resume.
 - Every generated bullet references at least one owned experience.
+- Every cover-letter body paragraph references at least one owned experience.
+- Tailoring persists the resume and cover letter together; if either generation fails, neither is saved.
 - Score can be recomputed from persisted factors without model call.
 - PDF contains selectable text, one column, standard headings, and no graphics required for meaning.
 - `pnpm test`, `pnpm typecheck`, and `pnpm build` pass.

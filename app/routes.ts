@@ -24,10 +24,16 @@ export default [
     ]),
     route("applications", "routes/applications-board.tsx"),
     route("applications/:applicationId", "routes/application-detail.tsx"),
+    route(
+      "applications/:applicationId/tailor",
+      "routes/application-tailor.tsx",
+    ),
     route("settings/ai", "routes/ai-settings.tsx"),
     route("settings/api-key", "routes/api-key-settings.tsx"),
     route("analyses/:analysisId", "routes/analysis-result.tsx"),
     route("resumes/:resumeId", "routes/resume-editor.tsx"),
     route("resumes/:resumeId/pdf", "routes/resume-pdf.tsx"),
+    route("cover-letters/:coverLetterId", "routes/cover-letter-editor.tsx"),
+    route("cover-letters/:coverLetterId/pdf", "routes/cover-letter-pdf.tsx"),
   ]),
 ] satisfies RouteConfig;

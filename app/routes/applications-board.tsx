@@ -18,10 +18,12 @@ import {
   groupApplicationsByStatus,
   type PendingMove,
   parseMoveFormData,
+  toApplicationDocuments,
 } from "../lib/applications";
 import { requireUser } from "../lib/auth.server";
 import {
   deleteApplication,
+  listApplicationDocumentSummaries,
   listApplications,
   placeApplication,
 } from "../lib/repositories.server";
@@ -38,7 +40,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const q = (new URL(request.url).searchParams.get("q") ?? "")
     .trim()
     .slice(0, maxQueryLength);
-  const rows = await listApplications(user.id, { q });
+  const [rows, summaries] = await Promise.all([
+    listApplications(user.id, { q }),
+    listApplicationDocumentSummaries(user.id),
+  ]);
   const applications: ApplicationCardData[] = rows.map((row) => ({
     id: row.id,
     companyName: row.companyName,
@@ -51,6 +56,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     status: row.status,
     sortOrder: row.sortOrder,
     source: row.source,
+    documents: toApplicationDocuments(summaries.get(row.id)),
   }));
   return { applications, q };
 }

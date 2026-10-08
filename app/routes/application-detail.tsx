@@ -3,6 +3,7 @@ import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { z } from "zod";
 import { StatusBadge } from "../components/application-card";
 import {
+  type ApplicationDocuments,
   applicationInputSchema,
   applicationStatuses,
   applicationStatusLabels,
@@ -11,12 +12,14 @@ import {
   parseApplicationStatus,
   salaryPeriodLabels,
   salaryPeriods,
+  toApplicationDocuments,
 } from "../lib/applications";
 import { requireUser } from "../lib/auth.server";
 import {
   createApplication,
   deleteApplication,
   getApplication,
+  listApplicationDocumentSummaries,
   updateApplication,
 } from "../lib/repositories.server";
 import { firstFormError } from "../lib/validation";
@@ -59,14 +62,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     const status =
       parseApplicationStatus(new URL(request.url).searchParams.get("status")) ??
       "saved";
-    return { application: null, initialStatus: status };
+    return {
+      application: null,
+      initialStatus: status,
+      documents: null,
+      tailored: false,
+    };
   }
-  const application = await getApplication(
-    user.id,
-    requireApplicationId(params.applicationId),
-  );
+  const applicationId = requireApplicationId(params.applicationId);
+  const [application, summaries] = await Promise.all([
+    getApplication(user.id, applicationId),
+    listApplicationDocumentSummaries(user.id, applicationId),
+  ]);
   if (!application) throw notFound();
-  return { application, initialStatus: application.status };
+  return {
+    application,
+    initialStatus: application.status,
+    documents: toApplicationDocuments(summaries.get(application.id)),
+    tailored: new URL(request.url).searchParams.get("tailored") === "1",
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -165,7 +179,7 @@ function describedBy(id: string, error?: string, hint?: boolean) {
   return hint ? `${id}-hint` : undefined;
 }
 
-function ReservedSection({
+function AsideSection({
   title,
   children,
 }: {
@@ -175,8 +189,88 @@ function ReservedSection({
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
       <h2 className="font-semibold">{title}</h2>
-      <p className="mt-2 text-sm text-slate-500">{children}</p>
+      <div className="mt-2 text-sm text-slate-400">{children}</div>
     </section>
+  );
+}
+
+const asideLinkClass = "font-medium text-cyan-400 hover:text-cyan-300";
+
+function TailoredDocuments({
+  applicationId,
+  documents,
+}: {
+  applicationId: string;
+  documents: ApplicationDocuments;
+}) {
+  const tailorPath = `/applications/${applicationId}/tailor`;
+  return (
+    <>
+      <AsideSection title="Match">
+        {documents.fitScore !== null ? (
+          <p>
+            <span className="text-3xl font-semibold text-cyan-300">
+              {documents.fitScore}
+            </span>{" "}
+            / 100 fit estimate.{" "}
+            <Link to={tailorPath} className={asideLinkClass}>
+              View matches
+            </Link>
+          </p>
+        ) : (
+          <p className="text-slate-500">
+            No analysis yet. Tailor this application to see which positions
+            match the job.
+          </p>
+        )}
+        <Link
+          to={tailorPath}
+          className="mt-4 inline-block rounded-xl bg-cyan-400 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
+        >
+          Tailor
+        </Link>
+      </AsideSection>
+      <AsideSection title="Tailored resume">
+        {documents.resumeId ? (
+          <p className="flex flex-wrap gap-3">
+            <Link
+              to={`/resumes/${documents.resumeId}`}
+              className={asideLinkClass}
+            >
+              Edit resume
+            </Link>
+            <a
+              href={`/resumes/${documents.resumeId}/pdf`}
+              className={asideLinkClass}
+            >
+              Download PDF
+            </a>
+          </p>
+        ) : (
+          <p className="text-slate-500">No tailored resume yet.</p>
+        )}
+      </AsideSection>
+      <AsideSection title="Cover letter">
+        {documents.coverLetterId ? (
+          <p className="flex flex-wrap gap-3">
+            <Link
+              to={`/cover-letters/${documents.coverLetterId}`}
+              className={asideLinkClass}
+            >
+              Edit cover letter
+            </Link>
+            <a
+              href={`/cover-letters/${documents.coverLetterId}/pdf`}
+              className={asideLinkClass}
+            >
+              Download PDF
+            </a>
+          </p>
+        ) : (
+          <p className="text-slate-500">No cover letter yet.</p>
+        )}
+      </AsideSection>
+    </>
   );
 }
 
@@ -184,7 +278,7 @@ export default function ApplicationDetail({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { application, initialStatus } = loaderData;
+  const { application, initialStatus, documents, tailored } = loaderData;
   const errors: Record<string, string> =
     actionData && "errors" in actionData ? actionData.errors : {};
   const saved = Boolean(actionData && "saved" in actionData);
@@ -233,7 +327,11 @@ export default function ApplicationDetail({
           ) : null}
         </div>
         <p role="status" className="text-sm text-emerald-300">
-          {saved ? "Application saved." : ""}
+          {saved
+            ? "Application saved."
+            : tailored
+              ? "Tailored resume and cover letter saved."
+              : ""}
         </p>
       </div>
 
@@ -466,17 +564,19 @@ export default function ApplicationDetail({
         </Form>
 
         <aside className="space-y-4">
-          <ReservedSection title="Match">
-            No match results yet. Experience matching for this job will appear
-            here.
-          </ReservedSection>
-          <ReservedSection title="Tailored resume">
-            No tailored resume yet. A resume tailored to this job description
-            will be saved here.
-          </ReservedSection>
-          <ReservedSection title="Cover letter">
-            No cover letter yet. A cover letter for this job will be saved here.
-          </ReservedSection>
+          {application && documents ? (
+            <TailoredDocuments
+              applicationId={application.id}
+              documents={documents}
+            />
+          ) : (
+            <AsideSection title="Tailoring">
+              <p className="text-slate-500">
+                Save the application first, then tailor a resume and cover
+                letter to it.
+              </p>
+            </AsideSection>
+          )}
           {application ? (
             <section className="rounded-2xl border border-red-950 bg-slate-900 p-5">
               <h2 className="font-semibold">Delete application</h2>

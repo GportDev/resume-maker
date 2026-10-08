@@ -82,10 +82,14 @@ export default function ResumeEditor({
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
-          to={`/analyses/${resume.analysisId}`}
+          to={
+            resume.applicationId
+              ? `/applications/${resume.applicationId}`
+              : `/analyses/${resume.analysisId}`
+          }
           className="text-sm text-cyan-400 hover:text-cyan-300"
         >
-          ← Back to analysis
+          ← Back to {resume.applicationId ? "application" : "analysis"}
         </Link>
         <a
           href={`/resumes/${resume.id}/pdf`}
