@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { z } from "zod";
 import { StatusBadge } from "../components/application-card";
+import { JobMatchPanel } from "../components/job-match-panel";
 import {
   type ApplicationDocuments,
   applicationInputSchema,
@@ -15,11 +16,22 @@ import {
   toApplicationDocuments,
 } from "../lib/applications";
 import { requireUser } from "../lib/auth.server";
+import { isJevConfigured } from "../lib/jev.server";
+import { matchOverrideInputSchema } from "../lib/job-match";
+import {
+  describeJobMatchFailure,
+  parseStoredJobMatch,
+  runJobMatch,
+  setJobMatchOverride,
+} from "../lib/job-match.server";
 import {
   createApplication,
   deleteApplication,
   getApplication,
+  getLatestApplicationAnalysis,
+  getLatestApplicationJobMatch,
   listApplicationDocumentSummaries,
+  listExperiences,
   updateApplication,
 } from "../lib/repositories.server";
 import { firstFormError } from "../lib/validation";
@@ -67,20 +79,49 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       initialStatus: status,
       documents: null,
       tailored: false,
+      jobMatch: null,
+      hasAnalysis: false,
+      jevConfigured: false,
+      positions: [],
     };
   }
   const applicationId = requireApplicationId(params.applicationId);
-  const [application, summaries] = await Promise.all([
-    getApplication(user.id, applicationId),
-    listApplicationDocumentSummaries(user.id, applicationId),
-  ]);
+  const [application, summaries, latestAnalysis, latestMatch, experienceList] =
+    await Promise.all([
+      getApplication(user.id, applicationId),
+      listApplicationDocumentSummaries(user.id, applicationId),
+      getLatestApplicationAnalysis(user.id, applicationId),
+      getLatestApplicationJobMatch(user.id, applicationId),
+      listExperiences(user.id),
+    ]);
   if (!application) throw notFound();
+  const match = parseStoredJobMatch(latestMatch);
   return {
     application,
     initialStatus: application.status,
     documents: toApplicationDocuments(summaries.get(application.id)),
     tailored: new URL(request.url).searchParams.get("tailored") === "1",
+    jobMatch: match
+      ? {
+          id: match.id,
+          createdAt: match.createdAt,
+          modelVersion: match.modelVersion,
+          stale: match.analysisId !== latestAnalysis?.id,
+          result: match.result,
+        }
+      : null,
+    hasAnalysis: Boolean(latestAnalysis),
+    jevConfigured: isJevConfigured(),
+    positions: experienceList.map(({ id, position, company }) => ({
+      id,
+      position,
+      company,
+    })),
   };
+}
+
+function matchError(status: number, message: string) {
+  return data({ errors: { match: message } }, { status });
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -88,6 +129,48 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "save");
   const isNew = params.applicationId === "new";
+
+  if (intent === "run-match") {
+    if (isNew) throw notFound();
+    const applicationId = requireApplicationId(params.applicationId);
+    const analysis = await getLatestApplicationAnalysis(user.id, applicationId);
+    if (!analysis) {
+      return matchError(
+        400,
+        "Analyze the job description before running a match.",
+      );
+    }
+    const result = await runJobMatch(user.id, applicationId, analysis.id);
+    if (!result.ok) {
+      const { status, message } = describeJobMatchFailure(result);
+      return matchError(status, message);
+    }
+    return data({ matched: true as const });
+  }
+
+  if (intent === "match-override") {
+    if (isNew) throw notFound();
+    const applicationId = requireApplicationId(params.applicationId);
+    const parsed = matchOverrideInputSchema.safeParse({
+      matchId: formData.get("matchId"),
+      requirementId: formData.get("requirementId"),
+      decision: formData.get("decision"),
+    });
+    if (!parsed.success) {
+      return matchError(400, "Choose accept or reject for a requirement.");
+    }
+    const result = await setJobMatchOverride(user.id, {
+      applicationId,
+      matchId: parsed.data.matchId,
+      requirementId: parsed.data.requirementId,
+      override: parsed.data.decision === "clear" ? null : parsed.data.decision,
+    });
+    if (!result.ok) {
+      const { status, message } = describeJobMatchFailure(result);
+      return matchError(status, message);
+    }
+    return data({ reviewed: true as const });
+  }
 
   if (intent === "delete") {
     if (isNew) throw notFound();
@@ -206,7 +289,7 @@ function TailoredDocuments({
   const tailorPath = `/applications/${applicationId}/tailor`;
   return (
     <>
-      <AsideSection title="Match">
+      <AsideSection title="Fit estimate">
         {documents.fitScore !== null ? (
           <p>
             <span className="text-3xl font-semibold text-cyan-300">
@@ -278,10 +361,21 @@ export default function ApplicationDetail({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { application, initialStatus, documents, tailored } = loaderData;
+  const {
+    application,
+    initialStatus,
+    documents,
+    tailored,
+    jobMatch,
+    hasAnalysis,
+    jevConfigured,
+    positions,
+  } = loaderData;
   const errors: Record<string, string> =
     actionData && "errors" in actionData ? actionData.errors : {};
   const saved = Boolean(actionData && "saved" in actionData);
+  const matched = Boolean(actionData && "matched" in actionData);
+  const reviewed = Boolean(actionData && "reviewed" in actionData);
   const navigation = useNavigation();
   const isSaving =
     navigation.state === "submitting" &&
@@ -329,239 +423,263 @@ export default function ApplicationDetail({
         <p role="status" className="text-sm text-emerald-300">
           {saved
             ? "Application saved."
-            : tailored
-              ? "Tailored resume and cover letter saved."
-              : ""}
+            : matched
+              ? "Job match updated."
+              : reviewed
+                ? "Review saved."
+                : tailored
+                  ? "Tailored resume and cover letter saved."
+                  : ""}
         </p>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Form
-          key={application?.updatedAt.toString() ?? "new"}
-          method="post"
-          className="space-y-6"
-        >
-          <section className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:grid-cols-2">
-            <h2 className="text-xl font-semibold sm:col-span-2">Role</h2>
-            <Field id="companyName" label="Company" error={errors.companyName}>
-              <input
+        <div className="min-w-0 space-y-6">
+          <Form
+            key={application?.updatedAt.toString() ?? "new"}
+            method="post"
+            className="space-y-6"
+          >
+            <section className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:grid-cols-2">
+              <h2 className="text-xl font-semibold sm:col-span-2">Role</h2>
+              <Field
                 id="companyName"
-                name="companyName"
-                defaultValue={application?.companyName ?? ""}
-                required
-                maxLength={160}
-                aria-invalid={errors.companyName ? true : undefined}
-                aria-describedby={describedBy(
-                  "companyName",
-                  errors.companyName,
-                )}
-                className={inputClass}
-              />
-            </Field>
-            <Field id="position" label="Position" error={errors.position}>
-              <input
-                id="position"
-                name="position"
-                defaultValue={application?.position ?? ""}
-                required
-                maxLength={160}
-                aria-invalid={errors.position ? true : undefined}
-                aria-describedby={describedBy("position", errors.position)}
-                className={inputClass}
-              />
-            </Field>
-            <Field id="location" label="Location" error={errors.location}>
-              <input
-                id="location"
-                name="location"
-                defaultValue={application?.location ?? ""}
-                maxLength={160}
-                placeholder="Remote, Lisbon, hybrid…"
-                aria-describedby={describedBy("location", errors.location)}
-                className={inputClass}
-              />
-            </Field>
-            <Field
-              id="sourceUrl"
-              label="Job posting link"
-              error={errors.sourceUrl}
-            >
-              <input
+                label="Company"
+                error={errors.companyName}
+              >
+                <input
+                  id="companyName"
+                  name="companyName"
+                  defaultValue={application?.companyName ?? ""}
+                  required
+                  maxLength={160}
+                  aria-invalid={errors.companyName ? true : undefined}
+                  aria-describedby={describedBy(
+                    "companyName",
+                    errors.companyName,
+                  )}
+                  className={inputClass}
+                />
+              </Field>
+              <Field id="position" label="Position" error={errors.position}>
+                <input
+                  id="position"
+                  name="position"
+                  defaultValue={application?.position ?? ""}
+                  required
+                  maxLength={160}
+                  aria-invalid={errors.position ? true : undefined}
+                  aria-describedby={describedBy("position", errors.position)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field id="location" label="Location" error={errors.location}>
+                <input
+                  id="location"
+                  name="location"
+                  defaultValue={application?.location ?? ""}
+                  maxLength={160}
+                  placeholder="Remote, Lisbon, hybrid…"
+                  aria-describedby={describedBy("location", errors.location)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field
                 id="sourceUrl"
-                name="sourceUrl"
-                type="url"
-                defaultValue={application?.sourceUrl ?? ""}
-                placeholder="https://"
-                aria-invalid={errors.sourceUrl ? true : undefined}
-                aria-describedby={describedBy("sourceUrl", errors.sourceUrl)}
-                className={inputClass}
-              />
-            </Field>
-            <Field id="status" label="Status" error={errors.status}>
-              <select
-                id="status"
-                name="status"
-                defaultValue={initialStatus}
-                aria-describedby={describedBy("status", errors.status)}
-                className={inputClass}
+                label="Job posting link"
+                error={errors.sourceUrl}
               >
-                {applicationStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {applicationStatusLabels[status]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field id="appliedAt" label="Applied on" error={errors.appliedAt}>
-              <input
-                id="appliedAt"
-                name="appliedAt"
-                type="date"
-                defaultValue={application?.appliedAt ?? ""}
-                aria-invalid={errors.appliedAt ? true : undefined}
-                aria-describedby={describedBy("appliedAt", errors.appliedAt)}
-                className={inputClass}
-              />
-            </Field>
-          </section>
+                <input
+                  id="sourceUrl"
+                  name="sourceUrl"
+                  type="url"
+                  defaultValue={application?.sourceUrl ?? ""}
+                  placeholder="https://"
+                  aria-invalid={errors.sourceUrl ? true : undefined}
+                  aria-describedby={describedBy("sourceUrl", errors.sourceUrl)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field id="status" label="Status" error={errors.status}>
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue={initialStatus}
+                  aria-describedby={describedBy("status", errors.status)}
+                  className={inputClass}
+                >
+                  {applicationStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {applicationStatusLabels[status]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="appliedAt" label="Applied on" error={errors.appliedAt}>
+                <input
+                  id="appliedAt"
+                  name="appliedAt"
+                  type="date"
+                  defaultValue={application?.appliedAt ?? ""}
+                  aria-invalid={errors.appliedAt ? true : undefined}
+                  aria-describedby={describedBy("appliedAt", errors.appliedAt)}
+                  className={inputClass}
+                />
+              </Field>
+            </section>
 
-          <fieldset className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:grid-cols-4">
-            <legend className="sr-only">Salary range</legend>
-            <h2 className="text-xl font-semibold sm:col-span-4">
-              Salary range
-            </h2>
-            <Field id="salaryMin" label="Minimum" error={errors.salaryMin}>
-              <input
-                id="salaryMin"
-                name="salaryMin"
-                type="number"
-                min={0}
-                step={1}
-                inputMode="numeric"
-                defaultValue={application?.salaryMin ?? ""}
-                aria-invalid={errors.salaryMin ? true : undefined}
-                aria-describedby={describedBy("salaryMin", errors.salaryMin)}
-                className={inputClass}
-              />
-            </Field>
-            <Field id="salaryMax" label="Maximum" error={errors.salaryMax}>
-              <input
-                id="salaryMax"
-                name="salaryMax"
-                type="number"
-                min={0}
-                step={1}
-                inputMode="numeric"
-                defaultValue={application?.salaryMax ?? ""}
-                aria-invalid={errors.salaryMax ? true : undefined}
-                aria-describedby={describedBy("salaryMax", errors.salaryMax)}
-                className={inputClass}
-              />
-            </Field>
-            <Field
-              id="salaryCurrency"
-              label="Currency"
-              error={errors.salaryCurrency}
-            >
-              <select
+            <fieldset className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:grid-cols-4">
+              <legend className="sr-only">Salary range</legend>
+              <h2 className="text-xl font-semibold sm:col-span-4">
+                Salary range
+              </h2>
+              <Field id="salaryMin" label="Minimum" error={errors.salaryMin}>
+                <input
+                  id="salaryMin"
+                  name="salaryMin"
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  defaultValue={application?.salaryMin ?? ""}
+                  aria-invalid={errors.salaryMin ? true : undefined}
+                  aria-describedby={describedBy("salaryMin", errors.salaryMin)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field id="salaryMax" label="Maximum" error={errors.salaryMax}>
+                <input
+                  id="salaryMax"
+                  name="salaryMax"
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  defaultValue={application?.salaryMax ?? ""}
+                  aria-invalid={errors.salaryMax ? true : undefined}
+                  aria-describedby={describedBy("salaryMax", errors.salaryMax)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field
                 id="salaryCurrency"
-                name="salaryCurrency"
-                defaultValue={currency}
-                aria-describedby={describedBy(
-                  "salaryCurrency",
-                  errors.salaryCurrency,
-                )}
-                className={inputClass}
+                label="Currency"
+                error={errors.salaryCurrency}
               >
-                {currencies.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field id="salaryPeriod" label="Period" error={errors.salaryPeriod}>
-              <select
+                <select
+                  id="salaryCurrency"
+                  name="salaryCurrency"
+                  defaultValue={currency}
+                  aria-describedby={describedBy(
+                    "salaryCurrency",
+                    errors.salaryCurrency,
+                  )}
+                  className={inputClass}
+                >
+                  {currencies.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field
                 id="salaryPeriod"
-                name="salaryPeriod"
-                defaultValue={application?.salaryPeriod ?? "year"}
-                aria-describedby={describedBy(
-                  "salaryPeriod",
-                  errors.salaryPeriod,
-                )}
-                className={inputClass}
+                label="Period"
+                error={errors.salaryPeriod}
               >
-                {salaryPeriods.map((period) => (
-                  <option key={period} value={period}>
-                    {salaryPeriodLabels[period]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </fieldset>
+                <select
+                  id="salaryPeriod"
+                  name="salaryPeriod"
+                  defaultValue={application?.salaryPeriod ?? "year"}
+                  aria-describedby={describedBy(
+                    "salaryPeriod",
+                    errors.salaryPeriod,
+                  )}
+                  className={inputClass}
+                >
+                  {salaryPeriods.map((period) => (
+                    <option key={period} value={period}>
+                      {salaryPeriodLabels[period]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </fieldset>
 
-          <section className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <Field
-              id="jobDescription"
-              label="Job description"
-              error={errors.jobDescription}
-              hint="Paste the full posting, including requirements. Tailoring and matching read this text."
-            >
-              <textarea
+            <section className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <Field
                 id="jobDescription"
-                name="jobDescription"
-                rows={14}
-                defaultValue={application?.jobDescription ?? ""}
-                maxLength={50_000}
-                aria-describedby={describedBy(
-                  "jobDescription",
-                  errors.jobDescription,
-                  true,
-                )}
-                className={`${inputClass} font-mono text-sm leading-6`}
-              />
-            </Field>
-            <Field id="notes" label="Notes" error={errors.notes}>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={5}
-                defaultValue={application?.notes ?? ""}
-                maxLength={10_000}
-                placeholder="Recruiter contact, interview dates, follow-ups…"
-                aria-describedby={describedBy("notes", errors.notes)}
-                className={`${inputClass} text-sm`}
-              />
-            </Field>
-          </section>
+                label="Job description"
+                error={errors.jobDescription}
+                hint="Paste the full posting, including requirements. Tailoring and matching read this text."
+              >
+                <textarea
+                  id="jobDescription"
+                  name="jobDescription"
+                  rows={14}
+                  defaultValue={application?.jobDescription ?? ""}
+                  maxLength={50_000}
+                  aria-describedby={describedBy(
+                    "jobDescription",
+                    errors.jobDescription,
+                    true,
+                  )}
+                  className={`${inputClass} font-mono text-sm leading-6`}
+                />
+              </Field>
+              <Field id="notes" label="Notes" error={errors.notes}>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows={5}
+                  defaultValue={application?.notes ?? ""}
+                  maxLength={10_000}
+                  placeholder="Recruiter contact, interview dates, follow-ups…"
+                  aria-describedby={describedBy("notes", errors.notes)}
+                  className={`${inputClass} text-sm`}
+                />
+              </Field>
+            </section>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              name="intent"
-              value="save"
-              disabled={isSaving}
-              className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
-            >
-              {isSaving
-                ? "Saving…"
-                : application
-                  ? "Save application"
-                  : "Add application"}
-            </button>
-            <Link
-              to="/applications"
-              className="text-sm text-slate-400 hover:text-slate-100"
-            >
-              Cancel
-            </Link>
-            {errors.form ? (
-              <p role="alert" className="text-sm text-red-300">
-                {errors.form}
-              </p>
-            ) : null}
-          </div>
-        </Form>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                name="intent"
+                value="save"
+                disabled={isSaving}
+                className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+              >
+                {isSaving
+                  ? "Saving…"
+                  : application
+                    ? "Save application"
+                    : "Add application"}
+              </button>
+              <Link
+                to="/applications"
+                className="text-sm text-slate-400 hover:text-slate-100"
+              >
+                Cancel
+              </Link>
+              {errors.form ? (
+                <p role="alert" className="text-sm text-red-300">
+                  {errors.form}
+                </p>
+              ) : null}
+            </div>
+          </Form>
+          {application ? (
+            <JobMatchPanel
+              applicationId={application.id}
+              match={jobMatch}
+              configured={jevConfigured}
+              hasAnalysis={hasAnalysis}
+              positions={positions}
+              error={errors.match}
+            />
+          ) : null}
+        </div>
 
         <aside className="space-y-4">
           {application && documents ? (

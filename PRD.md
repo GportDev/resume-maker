@@ -73,6 +73,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Create and edit applications on a detail page; deletion requires explicit confirmation.
 - Applications record source (`manual` now; LinkedIn later).
 - Cards and detail page show the latest fit score and links to the latest tailored resume and cover letter, plus a Tailor action.
+- Cards show the latest job-match recommendation and match percentage when a match exists.
 
 ### Tailoring and cover letter
 
@@ -82,6 +83,18 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Home page is a quick-tailor entry: paste a job description, then pick an existing application or create one from the analysis.
 - Cover letter: recipient, opening, cited body paragraphs, and closing; editable, with ATS-safe preview and selectable-text PDF download.
 - Cover letters never invent company facts beyond the job description or candidate facts beyond stored evidence.
+
+### Job match (TypeSafe Jev)
+
+- Optional: runs only when the server has `TYPESAFE_API_KEY`; without it, tailoring keeps the analysis-only behavior and the Match section says matching is unavailable.
+- After analysis extracts requirements, Jev decides for each required and preferred skill which stored position demonstrates it, or none, and rates seniority fit and domain fit. Jev returns typed decisions and probabilities, never text.
+- Code-owned thresholds decide each requirement: verified (a position chosen with probability ≥ 0.7 and confidence ≥ 0.6), missing (none chosen with probability ≥ 0.7), otherwise needs review.
+- Match score 0–100 = required coverage (70) + preferred coverage (15) + seniority (15); recommendation is strong match, worth tailoring, weak match, or needs review. Score and recommendation are deterministic; the ATS fit estimate stays separate.
+- Application detail shows a Match section with each requirement's chosen position, probability, and review flag, plus a Run match action. User can accept or reject needs-review items; overrides are stored and the score recomputes.
+- Board cards show the recommendation and match percentage.
+- When a match exists for the analysis, resume and cover letter generation receive only verified requirement-to-position pairs; analysis matches Jev does not confirm are flagged unverified on the tailor page and excluded from generation.
+- Disclaimer: match score is a heuristic over stored evidence, not a hiring probability.
+- Data retention: each run stores model version, question version, raw probabilities and confidence, and the computed result as an audit trail. Rows are deleted with their analysis or user account. Experience text is sent to TypeSafe only when a match runs.
 
 ### AI provider and API key settings
 
@@ -113,7 +126,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 
 ## Non-goals
 
-- Stripe billing, team workspaces, recruiter portal, job-board scraping, DOCX export, AI providers beyond Anthropic and OpenAI, vector search, and automatic application submission.
+- Stripe billing, team workspaces, recruiter portal, job-board scraping, DOCX export, text-generation providers beyond Anthropic and OpenAI (TypeSafe Jev is used only for match decisions), vector search, and automatic application submission.
 - Predicting actual recruiter decisions or guaranteeing ATS passage.
 
 ## Data entities
@@ -126,6 +139,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Job analysis: immutable job input plus structured analysis and score; optionally linked to an application.
 - Resume: editable generated snapshot linked to analysis and optionally to an application.
 - Cover letter: editable generated snapshot linked to analysis and optionally to an application.
+- Job match: Jev decisions for one analysis and application; model and question version, raw answers, computed result, and user overrides.
 - User API credential: encrypted provider secret metadata, at most one active key per provider per user.
 - User settings: one per user; preferred AI provider.
 
@@ -148,6 +162,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Every cover-letter body paragraph references at least one owned experience.
 - Tailoring persists the resume and cover letter together; if either generation fails, neither is saved.
 - Score can be recomputed from persisted factors without model call.
+- Job match score and recommendation can be recomputed from stored answers and overrides without a model call; only verified pairs reach generation when a match exists.
 - PDF contains selectable text, one column, standard headings, and no graphics required for meaning.
 - `pnpm test`, `pnpm typecheck`, and `pnpm build` pass.
 

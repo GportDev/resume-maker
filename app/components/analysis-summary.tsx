@@ -4,6 +4,7 @@ import {
   type JobAnalysis,
   type ScoreBreakdown,
 } from "../lib/analysis";
+import type { MatchVerification } from "../lib/job-match";
 import type { KeywordMatchResult } from "../lib/keyword-match";
 
 const factorLabels = {
@@ -156,11 +157,13 @@ export function AnalysisSummary({
   score,
   keywordMatch,
   positions = [],
+  matchVerification,
 }: {
   analysis: JobAnalysis;
   score: ScoreBreakdown;
   keywordMatch?: KeywordMatchResult;
   positions?: PositionLabel[];
+  matchVerification?: MatchVerification[];
 }) {
   const gaps = analysis.missingSkills.map((skill) => ({
     skill,
@@ -199,29 +202,53 @@ export function AnalysisSummary({
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
         <h2 className="text-xl font-semibold">Evidence matches</h2>
+        {matchVerification ? (
+          <p className="mt-1 text-sm text-slate-500">
+            Job match checked these. Only verified matches are used to write
+            documents.
+          </p>
+        ) : null}
         <div className="mt-5 space-y-4">
-          {analysis.matches.map((match) => (
-            <article
-              key={`${match.requirement}:${match.experienceIds.join(":")}:${match.evidence}`}
-              className="rounded-xl bg-slate-950 p-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="font-medium">{match.requirement}</h3>
-                <span
-                  className={`rounded-full px-2 py-1 text-xs ${
-                    match.strength === "strong"
-                      ? "bg-emerald-950 text-emerald-300"
-                      : "bg-amber-950 text-amber-300"
-                  }`}
-                >
-                  {match.strength}
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                {match.evidence}
-              </p>
-            </article>
-          ))}
+          {analysis.matches.map((match, index) => {
+            const verification = matchVerification?.[index];
+            return (
+              <article
+                key={`${match.requirement}:${match.experienceIds.join(":")}:${match.evidence}`}
+                className="rounded-xl bg-slate-950 p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="font-medium">{match.requirement}</h3>
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                    {verification ? (
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs ${
+                          verification === "verified"
+                            ? "bg-cyan-950 text-cyan-300"
+                            : "border border-dashed border-amber-700 text-amber-300"
+                        }`}
+                      >
+                        {verification === "verified"
+                          ? "Verified"
+                          : "Unverified, excluded"}
+                      </span>
+                    ) : null}
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        match.strength === "strong"
+                          ? "bg-emerald-950 text-emerald-300"
+                          : "bg-amber-950 text-amber-300"
+                      }`}
+                    >
+                      {match.strength}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  {match.evidence}
+                </p>
+              </article>
+            );
+          })}
           {!analysis.matches.length ? (
             <p className="text-sm text-slate-500">
               No supported matches found. Add more detailed experience evidence

@@ -43,6 +43,13 @@
       "when": 1791256734133,
       "tag": "0005_tailoring_cover_letters",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791479750093,
+      "tag": "0006_job_matches",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { z } from "zod";
 import { AnalysisSummary, FitScore } from "../components/analysis-summary";
+import { MatchBadge } from "../components/application-card";
 import {
   jobAnalysisSchema,
   jobDescriptionInputSchema,
@@ -9,9 +10,12 @@ import {
   scoreBreakdownSchema,
 } from "../lib/analysis";
 import { requireUser } from "../lib/auth.server";
+import { reconcileAnalysisMatches } from "../lib/job-match";
+import { parseStoredJobMatch } from "../lib/job-match.server";
 import { matchKeywordsToExperiences } from "../lib/keyword-match";
 import {
   getApplication,
+  getLatestAnalysisJobMatch,
   getLatestApplicationAnalysis,
   listApplicationDocumentSummaries,
   listExperiences,
@@ -51,6 +55,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Application not found.", { status: 404 });
   }
 
+  const match = record
+    ? parseStoredJobMatch(await getLatestAnalysisJobMatch(user.id, record.id))
+    : null;
   const latest = record
     ? (() => {
         const analysis = jobAnalysisSchema.parse(record.analysis);
@@ -62,6 +69,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           analysis,
           score: scoreBreakdownSchema.parse(record.score),
           keywordMatch: matchKeywordsToExperiences(analysis, experienceList),
+          matchVerification: match
+            ? reconcileAnalysisMatches(analysis.matches, match.result)
+                .verification
+            : undefined,
+          jobMatch: match
+            ? {
+                matchScore: match.result.matchScore,
+                recommendation: match.result.recommendation,
+              }
+            : null,
         };
       })()
     : null;
@@ -283,6 +300,20 @@ export default function ApplicationTailor({
                     : "Generate resume and cover letter"}
                 </button>
               </Form>
+              {latest.jobMatch ? (
+                <div className="mt-4 text-xs leading-5 text-slate-500">
+                  <MatchBadge match={latest.jobMatch} />
+                  <p className="mt-2">
+                    Documents use only matches verified by the job match.{" "}
+                    <Link
+                      to={`/applications/${application.id}`}
+                      className="text-cyan-400 hover:text-cyan-300"
+                    >
+                      Review match
+                    </Link>
+                  </p>
+                </div>
+              ) : null}
               {hasDocuments ? (
                 <p className="mt-3 text-xs text-slate-500">
                   Generating again saves new versions. The card shows the
@@ -311,6 +342,7 @@ export default function ApplicationTailor({
               score={latest.score}
               keywordMatch={latest.keywordMatch}
               positions={positions}
+              matchVerification={latest.matchVerification}
             />
           </div>
         </section>

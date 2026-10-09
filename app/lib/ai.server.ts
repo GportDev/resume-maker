@@ -11,6 +11,7 @@ import type { profiles } from "../db/schema";
 import { type JobAnalysis, jobAnalysisSchema } from "./analysis";
 import type { ExperienceWithCompany } from "./contributions";
 import { coverLetterContentSchema } from "./cover-letter";
+import type { VerifiedEvidence } from "./job-match";
 import { resumeContentSchema } from "./resume";
 
 type Experience = ExperienceWithCompany;
@@ -57,6 +58,18 @@ export async function generateStructured<Schema extends z.ZodType>(input: {
   throw new StructuredOutputError({ cause: lastFailure });
 }
 
+const verifiedEvidenceRule =
+  "verifiedEvidence lists the only requirement-to-experience pairs confirmed for this job; claim fit only for those requirements and cite those experiences for them.";
+
+function withVerifiedEvidenceRule(
+  rules: string[],
+  verifiedEvidence: VerifiedEvidence[] | undefined,
+): string {
+  return (verifiedEvidence ? [...rules, verifiedEvidenceRule] : rules).join(
+    " ",
+  );
+}
+
 export async function analyzeJob(input: {
   model: LanguageModel;
   jobDescription: string;
@@ -98,20 +111,27 @@ export async function generateResume(input: {
   profile: Profile | undefined;
   experiences: Experience[];
   analysis: JobAnalysis;
+  verifiedEvidence?: VerifiedEvidence[];
 }) {
   return generateStructured({
     model: input.model,
     schema: resumeContentSchema,
-    system: [
-      "Create a concise ATS-friendly resume from verified evidence only.",
-      "Never invent metrics, tools, skills, employers, positions, or dates.",
-      "Every bullet must cite sourceExperienceIds from supplied evidence.",
-      "Use single-column conventional sections and plain professional language.",
-      "Select only experience relevant to the target role.",
-      "Do not include missing skills as candidate skills.",
-    ].join(" "),
+    system: withVerifiedEvidenceRule(
+      [
+        "Create a concise ATS-friendly resume from verified evidence only.",
+        "Never invent metrics, tools, skills, employers, positions, or dates.",
+        "Every bullet must cite sourceExperienceIds from supplied evidence.",
+        "Use single-column conventional sections and plain professional language.",
+        "Select only experience relevant to the target role.",
+        "Do not include missing skills as candidate skills.",
+      ],
+      input.verifiedEvidence,
+    ),
     prompt: JSON.stringify({
       targetJob: input.analysis,
+      ...(input.verifiedEvidence
+        ? { verifiedEvidence: input.verifiedEvidence }
+        : {}),
       contact: {
         fullName: input.profile?.fullName || input.account.name,
         email: input.profile?.email || input.account.email,
@@ -144,19 +164,23 @@ export async function generateCoverLetter(input: {
     location: string;
     jobDescription: string;
   };
+  verifiedEvidence?: VerifiedEvidence[];
 }) {
   return generateStructured({
     model: input.model,
     schema: coverLetterContentSchema,
-    system: [
-      "Write a concise, specific cover letter from verified evidence only.",
-      "Never invent metrics, tools, skills, employers, positions, dates, or personal motivations.",
-      "State nothing about the company beyond what the job description says.",
-      "Every body paragraph must cite sourceExperienceIds from supplied evidence.",
-      "Use two to four body paragraphs in plain professional language without placeholders.",
-      "Recipient is a greeting line such as the hiring team at the company; do not guess a person's name.",
-      "Do not claim missing skills.",
-    ].join(" "),
+    system: withVerifiedEvidenceRule(
+      [
+        "Write a concise, specific cover letter from verified evidence only.",
+        "Never invent metrics, tools, skills, employers, positions, dates, or personal motivations.",
+        "State nothing about the company beyond what the job description says.",
+        "Every body paragraph must cite sourceExperienceIds from supplied evidence.",
+        "Use two to four body paragraphs in plain professional language without placeholders.",
+        "Recipient is a greeting line such as the hiring team at the company; do not guess a person's name.",
+        "Do not claim missing skills.",
+      ],
+      input.verifiedEvidence,
+    ),
     prompt: JSON.stringify({
       targetJob: {
         position: input.application.position,
@@ -165,6 +189,9 @@ export async function generateCoverLetter(input: {
         jobDescription: input.application.jobDescription,
         analysis: input.analysis,
       },
+      ...(input.verifiedEvidence
+        ? { verifiedEvidence: input.verifiedEvidence }
+        : {}),
       candidate: {
         fullName: input.profile?.fullName ?? "",
         headline: input.profile?.headline ?? "",

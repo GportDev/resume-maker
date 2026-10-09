@@ -1,8 +1,13 @@
 import { MockLanguageModelV4 } from "ai/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import type { JobAnalysis } from "../app/lib/analysis";
 import type { CoverLetterContent } from "../app/lib/cover-letter";
+import {
+  evaluateMatchPolicy,
+  listMatchRequirements,
+} from "../app/lib/job-match";
 import type { ResumeContent } from "../app/lib/resume";
 
 vi.mock("../app/lib/repositories.server", () => {
@@ -18,6 +23,10 @@ vi.mock("../app/lib/repositories.server", () => {
     createAnalysis: unused,
     createApplicationWithAnalysis: unused,
     createTailoredDocuments: unused,
+    createJobMatch: unused,
+    getJobMatch: unused,
+    getLatestAnalysisJobMatch: unused,
+    updateJobMatchResult: unused,
     getUserApiCredential: unused,
     getUserSettings: unused,
   };
@@ -148,6 +157,7 @@ type Route = "analysis" | "resume" | "coverLetter";
 
 function routedModel(responses: Partial<Record<Route, string | Error>>) {
   const calls: Route[] = [];
+  const prompts: Partial<Record<Route, { system: string; user: string }>> = {};
   const model = new MockLanguageModelV4({
     doGenerate: async (options) => {
       const system = options.prompt.find(
@@ -160,13 +170,25 @@ function routedModel(responses: Partial<Record<Route, string | Error>>) {
           ? "resume"
           : "analysis";
       calls.push(route);
+      const userMessage = options.prompt.find(
+        (message) => message.role === "user",
+      );
+      prompts[route] = {
+        system: text,
+        user:
+          userMessage?.role === "user"
+            ? userMessage.content
+                .map((part) => (part.type === "text" ? part.text : ""))
+                .join("")
+            : "",
+      };
       const response = responses[route];
       if (response === undefined) throw new Error(`Unexpected ${route} call`);
       if (response instanceof Error) throw response;
       return textResult(response);
     },
   });
-  return { model, calls };
+  return { model, calls, prompts };
 }
 
 function createDeps(model: MockLanguageModelV4) {
@@ -202,10 +224,53 @@ function createDeps(model: MockLanguageModelV4) {
       async () => ({ model, provider: "anthropic" }),
     ),
     logProviderError: vi.fn<TailoringDeps["logProviderError"]>(),
+    runJobMatch: vi.fn<TailoringDeps["runJobMatch"]>(async () => ({
+      ok: false,
+    })),
+    getLatestAnalysisJobMatch: vi.fn<
+      TailoringDeps["getLatestAnalysisJobMatch"]
+    >(async () => undefined),
   } satisfies TailoringDeps;
 }
 
 let deps: ReturnType<typeof createDeps>;
+
+function promptPayload(text: string | undefined) {
+  return z
+    .object({
+      targetJob: z.looseObject({
+        matches: z.array(z.unknown()).optional(),
+        analysis: z.looseObject({ matches: z.array(z.unknown()) }).optional(),
+      }),
+      verifiedEvidence: z.array(z.unknown()).optional(),
+    })
+    .parse(JSON.parse(text ?? "{}"));
+}
+
+async function generateWithMatch(probabilities: Record<string, number>) {
+  const { model, prompts } = routedModel({
+    resume: JSON.stringify(resume),
+    coverLetter: JSON.stringify(coverLetter),
+  });
+  deps = createDeps(model);
+  deps.getLatestAnalysisJobMatch.mockResolvedValueOnce({
+    result: evaluateMatchPolicy(listMatchRequirements(analysis), {
+      req_0: {
+        type: "choice",
+        choice: experienceId,
+        probabilities,
+        confidence: 0.9,
+      },
+    }),
+  });
+  const result = await generateTailoredDocuments(
+    user,
+    applicationId,
+    analysisId,
+    deps,
+  );
+  return { result, prompts };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -236,6 +301,27 @@ describe("runTailoringAnalysis", () => {
       matches: [{ experienceIds: [experienceId] }],
     });
     expect(saved?.score).toMatchObject({ requiredSkillCoverage: 35 });
+    expect(deps.runJobMatch).toHaveBeenCalledWith(
+      userId,
+      applicationId,
+      analysisId,
+    );
+  });
+
+  it("keeps the analysis when the job match throws", async () => {
+    const { model } = routedModel({ analysis: JSON.stringify(analysis) });
+    deps = createDeps(model);
+    deps.runJobMatch.mockRejectedValueOnce(new Error("Database unavailable"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      runTailoringAnalysis(userId, applicationId, jobDescription, deps),
+    ).resolves.toEqual({ ok: true, analysisId });
+    expect(error).toHaveBeenCalledWith("Jev request failed", {
+      operation: "job-match-after-analysis",
+      name: "Error",
+    });
+    error.mockRestore();
   });
 
   it("returns not-found for a foreign application without calling the model", async () => {
@@ -318,6 +404,11 @@ describe("runQuickTailoring", () => {
       jobDescription,
     });
     expect(saved?.jobTitle).toBe("Senior Engineer");
+    expect(deps.runJobMatch).toHaveBeenCalledWith(
+      userId,
+      applicationId,
+      analysisId,
+    );
   });
 
   it("analyzes into an existing application", async () => {
@@ -363,6 +454,56 @@ describe("generateTailoredDocuments", () => {
     expect(input?.coverLetter.content).toMatchObject({
       bodyParagraphs: [{ sourceExperienceIds: [experienceId] }],
     });
+  });
+
+  it("feeds only Jev-verified evidence into generation", async () => {
+    const { result, prompts } = await generateWithMatch({
+      [experienceId]: 0.9,
+      none: 0.1,
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    const resumePrompt = promptPayload(prompts.resume?.user);
+    const letterPrompt = promptPayload(prompts.coverLetter?.user);
+    for (const payload of [resumePrompt, letterPrompt]) {
+      expect(payload.verifiedEvidence).toEqual([
+        { requirement: "TypeScript", kind: "required", experienceId },
+      ]);
+    }
+    expect(prompts.resume?.system).toContain("verifiedEvidence lists");
+    expect(prompts.coverLetter?.system).toContain("verifiedEvidence lists");
+    expect(resumePrompt.targetJob.matches).toEqual([
+      expect.objectContaining({ experienceIds: [experienceId] }),
+    ]);
+    expect(letterPrompt.targetJob.analysis?.matches).toEqual([
+      expect.objectContaining({ experienceIds: [experienceId] }),
+    ]);
+  });
+
+  it("drops analysis matches that Jev did not verify", async () => {
+    const { prompts } = await generateWithMatch({
+      [experienceId]: 0.1,
+      none: 0.9,
+    });
+
+    const payload = promptPayload(prompts.resume?.user);
+    expect(payload.verifiedEvidence).toEqual([]);
+    expect(payload.targetJob.matches).toEqual([]);
+  });
+
+  it("generates without the verified rule when no match exists", async () => {
+    const { model, prompts } = routedModel({
+      resume: JSON.stringify(resume),
+      coverLetter: JSON.stringify(coverLetter),
+    });
+    deps = createDeps(model);
+
+    await generateTailoredDocuments(user, applicationId, analysisId, deps);
+
+    expect(prompts.resume?.system).not.toContain("verifiedEvidence lists");
+    expect(promptPayload(prompts.resume?.user)).not.toHaveProperty(
+      "verifiedEvidence",
+    );
   });
 
   it("persists nothing when the cover letter fails schema validation", async () => {

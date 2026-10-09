@@ -19,6 +19,7 @@ import {
   experiences,
   jobAnalyses,
   jobApplications,
+  jobMatches,
   profiles,
   resumes,
   userApiCredentials,
@@ -637,6 +638,7 @@ export type ApplicationDocumentSummary = {
   score: unknown;
   resumeId: string | null;
   coverLetterId: string | null;
+  match: unknown;
 };
 
 export async function listApplicationDocumentSummaries(
@@ -646,37 +648,51 @@ export async function listApplicationDocumentSummaries(
   const scope = (column: AnyPgColumn) =>
     applicationId ? eq(column, applicationId) : isNotNull(column);
 
-  const [analysisRows, resumeRows, coverLetterRows] = await Promise.all([
-    db
-      .selectDistinctOn([jobAnalyses.applicationId], {
-        applicationId: jobAnalyses.applicationId,
-        id: jobAnalyses.id,
-        score: jobAnalyses.score,
-      })
-      .from(jobAnalyses)
-      .where(
-        and(eq(jobAnalyses.userId, userId), scope(jobAnalyses.applicationId)),
-      )
-      .orderBy(jobAnalyses.applicationId, desc(jobAnalyses.createdAt)),
-    db
-      .selectDistinctOn([resumes.applicationId], {
-        applicationId: resumes.applicationId,
-        id: resumes.id,
-      })
-      .from(resumes)
-      .where(and(eq(resumes.userId, userId), scope(resumes.applicationId)))
-      .orderBy(resumes.applicationId, desc(resumes.createdAt)),
-    db
-      .selectDistinctOn([coverLetters.applicationId], {
-        applicationId: coverLetters.applicationId,
-        id: coverLetters.id,
-      })
-      .from(coverLetters)
-      .where(
-        and(eq(coverLetters.userId, userId), scope(coverLetters.applicationId)),
-      )
-      .orderBy(coverLetters.applicationId, desc(coverLetters.createdAt)),
-  ]);
+  const [analysisRows, resumeRows, coverLetterRows, matchRows] =
+    await Promise.all([
+      db
+        .selectDistinctOn([jobAnalyses.applicationId], {
+          applicationId: jobAnalyses.applicationId,
+          id: jobAnalyses.id,
+          score: jobAnalyses.score,
+        })
+        .from(jobAnalyses)
+        .where(
+          and(eq(jobAnalyses.userId, userId), scope(jobAnalyses.applicationId)),
+        )
+        .orderBy(jobAnalyses.applicationId, desc(jobAnalyses.createdAt)),
+      db
+        .selectDistinctOn([resumes.applicationId], {
+          applicationId: resumes.applicationId,
+          id: resumes.id,
+        })
+        .from(resumes)
+        .where(and(eq(resumes.userId, userId), scope(resumes.applicationId)))
+        .orderBy(resumes.applicationId, desc(resumes.createdAt)),
+      db
+        .selectDistinctOn([coverLetters.applicationId], {
+          applicationId: coverLetters.applicationId,
+          id: coverLetters.id,
+        })
+        .from(coverLetters)
+        .where(
+          and(
+            eq(coverLetters.userId, userId),
+            scope(coverLetters.applicationId),
+          ),
+        )
+        .orderBy(coverLetters.applicationId, desc(coverLetters.createdAt)),
+      db
+        .selectDistinctOn([jobMatches.applicationId], {
+          applicationId: jobMatches.applicationId,
+          result: jobMatches.result,
+        })
+        .from(jobMatches)
+        .where(
+          and(eq(jobMatches.userId, userId), scope(jobMatches.applicationId)),
+        )
+        .orderBy(jobMatches.applicationId, desc(jobMatches.createdAt)),
+    ]);
 
   const summaries = new Map<string, ApplicationDocumentSummary>();
   const entry = (id: string) => {
@@ -688,6 +704,7 @@ export async function listApplicationDocumentSummaries(
         score: null,
         resumeId: null,
         coverLetterId: null,
+        match: null,
       };
       summaries.set(id, summary);
     }
@@ -705,6 +722,9 @@ export async function listApplicationDocumentSummaries(
   }
   for (const row of coverLetterRows) {
     if (row.applicationId) entry(row.applicationId).coverLetterId = row.id;
+  }
+  for (const row of matchRows) {
+    if (row.applicationId) entry(row.applicationId).match = row.result;
   }
   return summaries;
 }
@@ -763,6 +783,87 @@ export async function listAnalysisDocuments(
       .orderBy(desc(coverLetters.createdAt)),
   ]);
   return { resumes: resumeRows, coverLetters: coverLetterRows };
+}
+
+export type JobMatchInput = {
+  applicationId: string;
+  analysisId: string;
+  modelVersion: string;
+  questionVersion: string;
+  answers: unknown;
+  result: unknown;
+};
+
+export async function createJobMatch(
+  userId: string,
+  input: JobMatchInput,
+): Promise<{ id: string } | undefined> {
+  return db.transaction(async (tx) => {
+    if (!(await ownsApplication(tx, userId, input.applicationId))) {
+      return undefined;
+    }
+    const [analysis] = await tx
+      .select({ id: jobAnalyses.id })
+      .from(jobAnalyses)
+      .where(
+        and(
+          eq(jobAnalyses.id, input.analysisId),
+          eq(jobAnalyses.userId, userId),
+          eq(jobAnalyses.applicationId, input.applicationId),
+        ),
+      );
+    if (!analysis) return undefined;
+    const [match] = await tx
+      .insert(jobMatches)
+      .values({ ...input, userId })
+      .returning({ id: jobMatches.id });
+    return match;
+  });
+}
+
+export async function getJobMatch(userId: string, matchId: string) {
+  return db.query.jobMatches.findFirst({
+    where: and(eq(jobMatches.id, matchId), eq(jobMatches.userId, userId)),
+  });
+}
+
+export async function getLatestApplicationJobMatch(
+  userId: string,
+  applicationId: string,
+) {
+  return db.query.jobMatches.findFirst({
+    where: and(
+      eq(jobMatches.userId, userId),
+      eq(jobMatches.applicationId, applicationId),
+    ),
+    orderBy: [desc(jobMatches.createdAt)],
+  });
+}
+
+export async function getLatestAnalysisJobMatch(
+  userId: string,
+  analysisId: string,
+) {
+  return db.query.jobMatches.findFirst({
+    where: and(
+      eq(jobMatches.userId, userId),
+      eq(jobMatches.analysisId, analysisId),
+    ),
+    orderBy: [desc(jobMatches.createdAt)],
+  });
+}
+
+export async function updateJobMatchResult(
+  userId: string,
+  matchId: string,
+  result: unknown,
+) {
+  const [match] = await db
+    .update(jobMatches)
+    .set({ result, updatedAt: new Date() })
+    .where(and(eq(jobMatches.id, matchId), eq(jobMatches.userId, userId)))
+    .returning({ id: jobMatches.id });
+  return match;
 }
 
 export async function updateResume(

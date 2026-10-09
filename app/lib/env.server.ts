@@ -12,6 +12,9 @@ const serverEnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(20).optional(),
   OPENAI_MODEL: z.string().min(1).default("gpt-5-mini"),
   CREDENTIAL_ENCRYPTION_KEY: z.string().min(1),
+  TYPESAFE_API_KEY: z.string().min(1).optional(),
+  TYPESAFE_MODEL: z.string().min(1).default("jev-latest"),
+  TYPESAFE_BASE_URL: z.string().url().default("https://api.typesafe.ai"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -27,6 +30,9 @@ export function getServerEnv(): ServerEnv {
       ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL || undefined,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY || undefined,
       OPENAI_MODEL: process.env.OPENAI_MODEL || undefined,
+      TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY || undefined,
+      TYPESAFE_MODEL: process.env.TYPESAFE_MODEL || undefined,
+      TYPESAFE_BASE_URL: process.env.TYPESAFE_BASE_URL || undefined,
     });
   }
 

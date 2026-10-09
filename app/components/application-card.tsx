@@ -6,6 +6,11 @@ import {
   applicationStatusLabels,
   formatSalaryRange,
 } from "../lib/applications";
+import {
+  type JobMatchSummary,
+  type MatchRecommendation,
+  matchRecommendationLabels,
+} from "../lib/job-match";
 
 const statusTone: Record<ApplicationStatus, string> = {
   saved: "bg-slate-800 text-slate-300",
@@ -30,6 +35,24 @@ export function FitBadge({ score }: { score: number }) {
   return (
     <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-xs font-medium text-cyan-300">
       <span className="sr-only">Fit estimate </span>Fit {score}
+    </span>
+  );
+}
+
+const recommendationTone: Record<MatchRecommendation, string> = {
+  strong_match: "bg-emerald-950 text-emerald-300",
+  worth_tailoring: "bg-violet-950 text-violet-300",
+  weak_match: "bg-slate-800 text-slate-300",
+  needs_review: "bg-amber-950 text-amber-300",
+};
+
+export function MatchBadge({ match }: { match: JobMatchSummary }) {
+  return (
+    <span
+      className={`rounded px-1.5 py-0.5 text-xs font-medium ${recommendationTone[match.recommendation]}`}
+    >
+      <span className="sr-only">Job match: </span>
+      {matchRecommendationLabels[match.recommendation]} · {match.matchScore}%
     </span>
   );
 }
@@ -136,6 +159,9 @@ export function ApplicationCard({
         ) : null}
         {application.documents?.fitScore != null ? (
           <FitBadge score={application.documents.fitScore} />
+        ) : null}
+        {application.documents?.match ? (
+          <MatchBadge match={application.documents.match} />
         ) : null}
         {badges}
       </div>

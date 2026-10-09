@@ -18,6 +18,13 @@ import {
 import { type ApplicationInput, applicationInputSchema } from "./applications";
 import type { ExperienceWithCompany } from "./contributions";
 import { sanitizeCoverLetterEvidence } from "./cover-letter";
+import { logJevError } from "./jev.server";
+import {
+  jobMatchResultSchema,
+  reconcileAnalysisMatches,
+  type VerifiedEvidence,
+} from "./job-match";
+import { runJobMatch } from "./job-match.server";
 import {
   type AnalysisInput,
   createAnalysis,
@@ -25,6 +32,7 @@ import {
   createTailoredDocuments,
   getAnalysis,
   getApplication,
+  getLatestAnalysisJobMatch,
   getProfile,
   listExperiences,
   saveApplicationJobDescription,
@@ -81,6 +89,15 @@ export type TailoringDeps = {
     provider: AiProvider | undefined,
     error: unknown,
   ) => void;
+  runJobMatch: (
+    userId: string,
+    applicationId: string,
+    analysisId: string,
+  ) => Promise<{ ok: boolean }>;
+  getLatestAnalysisJobMatch: (
+    userId: string,
+    analysisId: string,
+  ) => Promise<{ result: unknown } | undefined>;
 };
 
 const defaultDeps: TailoringDeps = {
@@ -94,6 +111,9 @@ const defaultDeps: TailoringDeps = {
   createTailoredDocuments,
   resolveLanguageModel,
   logProviderError,
+  runJobMatch: (userId, applicationId, analysisId) =>
+    runJobMatch(userId, applicationId, analysisId),
+  getLatestAnalysisJobMatch,
 };
 
 export type TailoringFailure =
@@ -202,7 +222,21 @@ export async function runTailoringAnalysis(
     applicationId: application.id,
   });
   if (!saved) return notFound;
+  await matchAfterAnalysis(userId, application.id, saved.id, deps);
   return { ok: true, analysisId: saved.id };
+}
+
+async function matchAfterAnalysis(
+  userId: string,
+  applicationId: string,
+  analysisId: string,
+  deps: TailoringDeps,
+): Promise<void> {
+  try {
+    await deps.runJobMatch(userId, applicationId, analysisId);
+  } catch (error) {
+    logJevError("job-match-after-analysis", error);
+  }
 }
 
 const unknownCompany = "Company not specified";
@@ -244,7 +278,32 @@ export async function runQuickTailoring(
     }),
     analysisRecord(input.jobDescription, analysis, score),
   );
+  await matchAfterAnalysis(
+    userId,
+    created.applicationId,
+    created.analysisId,
+    deps,
+  );
   return { ok: true, ...created };
+}
+
+async function applyJobMatch(
+  userId: string,
+  analysisId: string,
+  analysis: JobAnalysis,
+  deps: TailoringDeps,
+): Promise<{
+  analysis: JobAnalysis;
+  verifiedEvidence?: VerifiedEvidence[];
+}> {
+  const match = await deps.getLatestAnalysisJobMatch(userId, analysisId);
+  const result = jobMatchResultSchema.safeParse(match?.result);
+  if (!result.success) return { analysis };
+  const reconciled = reconcileAnalysisMatches(analysis.matches, result.data);
+  return {
+    analysis: { ...analysis, matches: reconciled.matches },
+    verifiedEvidence: reconciled.verifiedEvidence,
+  };
 }
 
 export async function generateTailoredDocuments(
@@ -264,8 +323,14 @@ export async function generateTailoredDocuments(
   }
   if (!experiences.length) return noExperiences;
 
-  const analysis = jobAnalysisSchema.parse(record.analysis);
+  const storedAnalysis = jobAnalysisSchema.parse(record.analysis);
   const ownedIds = new Set(experiences.map((experience) => experience.id));
+  const { analysis, verifiedEvidence } = await applyJobMatch(
+    user.id,
+    record.id,
+    storedAnalysis,
+    deps,
+  );
 
   const generated = await withModel(
     user.id,
@@ -279,6 +344,7 @@ export async function generateTailoredDocuments(
           profile,
           experiences,
           analysis,
+          verifiedEvidence,
         }),
         generateCoverLetter({
           model,
@@ -286,6 +352,7 @@ export async function generateTailoredDocuments(
           experiences,
           analysis,
           application,
+          verifiedEvidence,
         }),
       ]);
       return {
