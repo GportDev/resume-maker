@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { z } from "zod";
-import { StatusBadge } from "../components/application-card";
+import {
+  LinkedInBadge,
+  LinkedInPostingLink,
+  StatusBadge,
+} from "../components/application-card";
 import { JobMatchPanel } from "../components/job-match-panel";
 import {
   type ApplicationDocuments,
@@ -413,6 +417,18 @@ export default function ApplicationDetail({
           {application ? (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
               <StatusBadge status={application.status} />
+              {application.source === "linkedin" ? (
+                <>
+                  <LinkedInBadge />
+                  <LinkedInPostingLink
+                    externalId={application.externalId}
+                    label={`${application.position} at ${application.companyName}`}
+                    className="text-cyan-400 hover:text-cyan-300"
+                  >
+                    View on LinkedIn
+                  </LinkedInPostingLink>
+                </>
+              ) : null}
               {salary ? <span>{salary}</span> : null}
               {application.location ? (
                 <span>{application.location}</span>

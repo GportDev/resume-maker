@@ -250,8 +250,9 @@ export type ListingApplication = {
 
 export function listingToApplicationInput(
   listing: JobListing,
-): ListingApplication {
-  const input = applicationInputSchema.parse({
+): ListingApplication | null {
+  if (!isLinkedInJobId(listing.externalId)) return null;
+  const parsed = applicationInputSchema.safeParse({
     companyName: truncate(listing.company, 160) || unknownCompany,
     position: truncate(listing.title, 160),
     location: truncate(listing.location, 160),
@@ -265,8 +266,9 @@ export function listingToApplicationInput(
     notes: "",
     appliedAt: "",
   });
+  if (!parsed.success) return null;
   return {
-    input,
+    input: parsed.data,
     origin: { source: "linkedin", externalId: listing.externalId },
   };
 }

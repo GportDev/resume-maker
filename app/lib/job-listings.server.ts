@@ -37,6 +37,7 @@ type Logger = Pick<Console, "error" | "warn">;
 
 export type FantasticJobsOptions = {
   apiKey: string;
+  baseUrl?: string;
   fetch?: typeof fetch;
   logger?: Logger;
   now?: () => Date;
@@ -193,8 +194,12 @@ export function parseFantasticJobsResponse(json: unknown): {
   };
 }
 
-export function buildFantasticJobsUrl(input: JobSearchInput, now: Date): URL {
-  const url = new URL(`https://${fantasticJobsHost}/active-jb`);
+export function buildFantasticJobsUrl(
+  input: JobSearchInput,
+  now: Date,
+  baseUrl = `https://${fantasticJobsHost}`,
+): URL {
+  const url = new URL("/active-jb", baseUrl);
   const params = url.searchParams;
   params.set("time_frame", timeFrames[input.postedWithin]);
   if (input.postedWithin === "30d") {
@@ -237,15 +242,18 @@ export function createFantasticJobsProvider(
     async search(input) {
       let response: Response;
       try {
-        response = await fetchImpl(buildFantasticJobsUrl(input, now()), {
-          method: "GET",
-          headers: {
-            "x-rapidapi-key": options.apiKey,
-            "x-rapidapi-host": fantasticJobsHost,
-            Accept: "application/json",
+        response = await fetchImpl(
+          buildFantasticJobsUrl(input, now(), options.baseUrl),
+          {
+            method: "GET",
+            headers: {
+              "x-rapidapi-key": options.apiKey,
+              "x-rapidapi-host": fantasticJobsHost,
+              Accept: "application/json",
+            },
+            signal: AbortSignal.timeout(timeoutMs),
           },
-          signal: AbortSignal.timeout(timeoutMs),
-        });
+        );
       } catch (error) {
         return fail(undefined, error);
       }
@@ -285,6 +293,9 @@ export function getJobListingProvider(): JobListingProvider | null {
   if (!env.RAPIDAPI_KEY) return null;
   switch (env.JOB_LISTINGS_PROVIDER) {
     case "fantastic_jobs":
-      return createFantasticJobsProvider({ apiKey: env.RAPIDAPI_KEY });
+      return createFantasticJobsProvider({
+        apiKey: env.RAPIDAPI_KEY,
+        baseUrl: env.JOB_LISTINGS_BASE_URL,
+      });
   }
 }

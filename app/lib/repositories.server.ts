@@ -6,6 +6,7 @@ import {
   eq,
   getTableColumns,
   ilike,
+  inArray,
   isNotNull,
   max,
   or,
@@ -280,6 +281,7 @@ const applicationBoardColumns = {
   status: jobApplications.status,
   sortOrder: jobApplications.sortOrder,
   source: jobApplications.source,
+  externalId: jobApplications.externalId,
   appliedAt: jobApplications.appliedAt,
   updatedAt: jobApplications.updatedAt,
 };
@@ -365,6 +367,67 @@ export async function createApplication(
     })
     .returning();
   return application;
+}
+
+function linkedInListingOwner(userId: string) {
+  return and(
+    eq(jobApplications.userId, userId),
+    eq(jobApplications.source, "linkedin"),
+  );
+}
+
+export async function saveListingApplication(
+  userId: string,
+  input: ApplicationInput,
+  externalId: string,
+): Promise<{ applicationId: string; created: boolean } | undefined> {
+  const sortOrder = await endOfColumnSortOrder(db, userId, input.status);
+  const [created] = await db
+    .insert(jobApplications)
+    .values({
+      ...input,
+      source: "linkedin",
+      externalId,
+      userId,
+      sortOrder,
+    })
+    .onConflictDoNothing()
+    .returning({ id: jobApplications.id });
+  if (created) return { applicationId: created.id, created: true };
+
+  const [existing] = await db
+    .select({ id: jobApplications.id })
+    .from(jobApplications)
+    .where(
+      and(
+        linkedInListingOwner(userId),
+        eq(jobApplications.externalId, externalId),
+      ),
+    )
+    .limit(1);
+  return existing ? { applicationId: existing.id, created: false } : undefined;
+}
+
+export async function listSavedListingIds(
+  userId: string,
+  externalIds: string[],
+): Promise<Map<string, string>> {
+  if (!externalIds.length) return new Map();
+  const rows = await db
+    .select({
+      id: jobApplications.id,
+      externalId: jobApplications.externalId,
+    })
+    .from(jobApplications)
+    .where(
+      and(
+        linkedInListingOwner(userId),
+        inArray(jobApplications.externalId, externalIds),
+      ),
+    );
+  return new Map(
+    rows.flatMap((row) => (row.externalId ? [[row.externalId, row.id]] : [])),
+  );
 }
 
 export async function updateApplication(

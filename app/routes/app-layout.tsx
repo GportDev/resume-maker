@@ -44,6 +44,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
             {[
               ["/", "Analyze"],
               ["/applications", "Applications"],
+              ["/jobs", "Find jobs"],
               ["/contributions", "Contributions"],
               ["/profile", "Profile"],
               ["/settings/ai", "AI settings"],
