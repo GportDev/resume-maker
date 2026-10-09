@@ -220,7 +220,8 @@ export function htmlToPlainText(html: string): string {
     .replace(/<(script|style|noscript|template)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<li\b[^>]*>/gi, "\n- ")
-    .replace(new RegExp(`</?(?:${blockTags}|li)\\b[^>]*>`, "gi"), "\n")
+    .replace(/<\/li\s*>/gi, "")
+    .replace(new RegExp(`</?(?:${blockTags})\\b[^>]*>`, "gi"), "\n")
     .replace(/<\/?[a-z][^>]*>/gi, "");
 
   return decodeEntities(withoutTags)
