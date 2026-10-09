@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1910000001,
+    "title": "Senior Frontend Engineer &amp; Design Systems",
+    "organization": "Globex",
+    "organization_url": "https://www.linkedin.com/company/globex",
+    "date_posted": "2026-10-06T09:30:00",
+    "date_created": "2026-10-06T10:30:00",
+    "locations_derived": ["Berlin, Berlin, Germany", "Berlin, Berlin, Germany"],
+    "location_type": null,
+    "description_html": "<p>Build <strong>TypeScript</strong> &amp; React apps.</p><script>alert('x')</script><ul><li>Own the design system</li><li>Ship accessible UI &lt;fast&gt;</li></ul>",
+    "ai_salary_currency": "eur",
+    "ai_salary_value": null,
+    "ai_salary_min_value": 80000.4,
+    "ai_salary_max_value": 95000,
+    "ai_salary_unit_text": "YEAR",
+    "ai_work_arrangement": "Remote OK",
+    "source": "linkedin",
+    "source_type": "jobboard",
+    "url": "https://www.linkedin.com/jobs/view/senior-frontend-engineer-at-globex-4012345678",
+    "linkedin_id": 4012345678,
+    "seniority": "Mid-Senior level",
+    "direct_apply": false
+  },
+  {
+    "id": 1910000002,
+    "title": "Platform Engineer",
+    "organization": "Initech",
+    "date_posted": "2026-10-05T12:00:00Z",
+    "locations_derived": [],
+    "location_type": "TELECOMMUTE",
+    "description_text": "Run Terraform\r\nand Kubernetes.",
+    "ai_salary_currency": "USD",
+    "ai_salary_value": 60,
+    "ai_salary_unit_text": "HOUR",
+    "ai_work_arrangement": "Remote Solely",
+    "url": "https://www.linkedin.com/jobs/view/4099999999/?trk=public_jobs",
+    "linkedin_id": null
+  },
+  {
+    "id": 1910000003,
+    "title": "Data Analyst",
+    "organization": "Hooli",
+    "date_posted": "not a date",
+    "locations_derived": ["New York, New York, United States"],
+    "ai_salary_currency": "USD",
+    "ai_salary_value": 3000,
+    "ai_salary_unit_text": "WEEK",
+    "ai_work_arrangement": "Fully flexible",
+    "url": "https://www.linkedin.com/jobs/view/4011111111",
+    "linkedin_id": "4011111111"
+  },
+  {
+    "id": 1910000004,
+    "title": "Backend Engineer",
+    "organization": "Umbrella",
+    "ai_salary_currency": "USD",
+    "ai_salary_min_value": 150000,
+    "ai_salary_max_value": 120000,
+    "ai_salary_unit_text": "YEAR",
+    "url": "https://www.linkedin.com/jobs/view/4022222222",
+    "linkedin_id": 4022222222
+  },
+  {
+    "id": 1910000005,
+    "title": "Duplicate of Globex listing",
+    "organization": "Globex",
+    "url": "https://www.linkedin.com/jobs/view/4012345678",
+    "linkedin_id": 4012345678
+  },
+  {
+    "id": 1910000006,
+    "title": "No LinkedIn ID",
+    "organization": "Vandelay",
+    "url": "https://evil.example.com/jobs/view/4033333333",
+    "linkedin_id": null
+  },
+  {
+    "id": 1910000007,
+    "title": 42,
+    "organization": "Broken Row",
+    "linkedin_id": 4044444444
+  },
+  {
+    "id": 1910000008,
+    "title": "   ",
+    "organization": "Blank Title",
+    "linkedin_id": 4055555555
+  }
+]

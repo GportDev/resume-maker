@@ -15,6 +15,12 @@ const serverEnvSchema = z.object({
   TYPESAFE_API_KEY: z.string().min(1).optional(),
   TYPESAFE_MODEL: z.string().min(1).default("jev-latest"),
   TYPESAFE_BASE_URL: z.string().url().default("https://api.typesafe.ai"),
+  JOB_LISTINGS_PROVIDER: z.enum(["fantastic_jobs"]).default("fantastic_jobs"),
+  RAPIDAPI_KEY: z.string().min(1).optional(),
+  JOB_LISTINGS_BASE_URL: z
+    .string()
+    .url()
+    .default("https://linkedin-job-search-api.p.rapidapi.com"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -33,6 +39,9 @@ export function getServerEnv(): ServerEnv {
       TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY || undefined,
       TYPESAFE_MODEL: process.env.TYPESAFE_MODEL || undefined,
       TYPESAFE_BASE_URL: process.env.TYPESAFE_BASE_URL || undefined,
+      JOB_LISTINGS_PROVIDER: process.env.JOB_LISTINGS_PROVIDER || undefined,
+      RAPIDAPI_KEY: process.env.RAPIDAPI_KEY || undefined,
+      JOB_LISTINGS_BASE_URL: process.env.JOB_LISTINGS_BASE_URL || undefined,
     });
   }
 

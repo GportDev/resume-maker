@@ -23,6 +23,7 @@ export default [
       route(":experienceId", "routes/contribution-file.tsx"),
     ]),
     route("applications", "routes/applications-board.tsx"),
+    route("jobs", "routes/job-search.tsx"),
     route("applications/:applicationId", "routes/application-detail.tsx"),
     route(
       "applications/:applicationId/tailor",

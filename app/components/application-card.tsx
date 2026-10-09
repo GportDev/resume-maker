@@ -6,6 +6,7 @@ import {
   applicationStatusLabels,
   formatSalaryRange,
 } from "../lib/applications";
+import { linkedInJobUrlOrNull } from "../lib/job-listings";
 import {
   type JobMatchSummary,
   type MatchRecommendation,
@@ -60,9 +61,47 @@ export function MatchBadge({ match }: { match: JobMatchSummary }) {
 const documentLinkClass =
   "rounded text-cyan-400 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-400";
 
+export function LinkedInBadge() {
+  return (
+    <span className="rounded bg-sky-950 px-1.5 py-0.5 text-xs text-sky-300">
+      LinkedIn
+    </span>
+  );
+}
+
+export function LinkedInPostingLink({
+  externalId,
+  label,
+  className = documentLinkClass,
+  children = "LinkedIn posting",
+}: {
+  externalId: string | null | undefined;
+  label: string;
+  className?: string;
+  children?: ReactNode;
+}) {
+  const href = linkedInJobUrlOrNull(externalId);
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`LinkedIn posting for ${label} (opens in a new tab)`}
+      className={className}
+    >
+      {children}
+    </a>
+  );
+}
+
 function DocumentLinks({ application }: { application: ApplicationCardData }) {
   const documents = application.documents;
   const label = `${application.position} at ${application.companyName}`;
+  const postingLink =
+    application.source === "linkedin" ? (
+      <LinkedInPostingLink externalId={application.externalId} label={label} />
+    ) : null;
   return (
     <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
       <li>
@@ -96,6 +135,7 @@ function DocumentLinks({ application }: { application: ApplicationCardData }) {
           </Link>
         </li>
       ) : null}
+      {postingLink ? <li>{postingLink}</li> : null}
     </ul>
   );
 }
@@ -152,11 +192,7 @@ export function ApplicationCard({
       </dl>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <StatusBadge status={application.status} />
-        {application.source === "linkedin" ? (
-          <span className="rounded bg-sky-950 px-1.5 py-0.5 text-xs text-sky-300">
-            LinkedIn
-          </span>
-        ) : null}
+        {application.source === "linkedin" ? <LinkedInBadge /> : null}
         {application.documents?.fitScore != null ? (
           <FitBadge score={application.documents.fitScore} />
         ) : null}

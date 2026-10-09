@@ -56,6 +56,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     status: row.status,
     sortOrder: row.sortOrder,
     source: row.source,
+    externalId: row.externalId,
     documents: toApplicationDocuments(summaries.get(row.id)),
   }));
   return { applications, q };
@@ -200,6 +201,12 @@ export default function ApplicationsBoard({
               </Link>
             ) : null}
           </Form>
+          <Link
+            to="/jobs"
+            className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium hover:border-cyan-400"
+          >
+            Find jobs
+          </Link>
           <Link
             to="/applications/new"
             className="rounded-xl bg-cyan-400 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
