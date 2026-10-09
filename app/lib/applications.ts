@@ -282,6 +282,7 @@ export type ApplicationCardData = BoardCard & {
   salaryCurrency: string;
   salaryPeriod: SalaryPeriod;
   source: ApplicationSource;
+  externalId?: string | null;
   documents?: ApplicationDocuments;
 };
 
