@@ -37,6 +37,11 @@ Personalized Resume converts a user's verified work history into a job-specific,
 2. Move its card across board columns as status changes.
 3. Filter the board and open a card to edit details or notes.
 
+### Finding jobs
+
+1. Search LinkedIn listings by keywords, location, posting age, and remote preference.
+2. Save a listing to the board, or save it and go straight to tailoring.
+
 ## MVP requirements
 
 ### Authentication
@@ -71,7 +76,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Cards move between columns and reorder within a column by drag-and-drop (pointer and keyboard, with screen-reader announcements); a per-card status select works without JavaScript.
 - Text filter narrows cards by company, position, or location.
 - Create and edit applications on a detail page; deletion requires explicit confirmation.
-- Applications record source (`manual` now; LinkedIn later).
+- Applications record source (`manual` or `linkedin`); LinkedIn cards show a LinkedIn badge and a link to the posting.
 - Cards and detail page show the latest fit score and links to the latest tailored resume and cover letter, plus a Tailor action.
 - Cards show the latest job-match recommendation and match percentage when a match exists.
 
@@ -95,6 +100,16 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - When a match exists for the analysis, resume and cover letter generation receive only verified requirement-to-position pairs; analysis matches Jev does not confirm are flagged unverified on the tailor page and excluded from generation.
 - Disclaimer: match score is a heuristic over stored evidence, not a hiring probability.
 - Data retention: each run stores model version, question version, raw probabilities and confidence, and the computed result as an audit trail. Rows are deleted with their analysis or user account. Experience text is sent to TypeSafe only when a match runs.
+
+### Job listing search (LinkedIn)
+
+- Data source: LinkedIn has no public job-search API, and scraping LinkedIn is excluded. Listings come from a licensed aggregator API (Fantastic.jobs "LinkedIn Job Search API" on RapidAPI) behind a pluggable provider, using a platform `RAPIDAPI_KEY`. An official LinkedIn partner adapter can be added later behind the same interface.
+- Optional: without `RAPIDAPI_KEY` the Find jobs page explains that search is not configured; the rest of the app is unaffected.
+- Search by keywords (job title), location (full place names), posted within 24 hours, 7 days, or 30 days, and remote only; 25 results per page.
+- Results show title, company, location, salary when present, posted date, and a "View on LinkedIn" link built only from the numeric LinkedIn job ID.
+- Listing descriptions are converted to plain text; listing HTML is never rendered.
+- Save creates a Saved application with source `linkedin`, the LinkedIn job ID, posting link, description, and salary. Saving a listing already on the board does not duplicate it and links to the existing card. Save and tailor opens the tailor page for that application.
+- External dependency and quota: each search page is one paid aggregator request; saving does not call the provider. Provider failures show a generic message; server logs keep only the provider status.
 
 ### AI provider and API key settings
 
@@ -126,7 +141,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 
 ## Non-goals
 
-- Stripe billing, team workspaces, recruiter portal, job-board scraping, DOCX export, text-generation providers beyond Anthropic and OpenAI (TypeSafe Jev is used only for match decisions), vector search, and automatic application submission.
+- Stripe billing, team workspaces, recruiter portal, job-board scraping (job listings come only from licensed APIs), DOCX export, text-generation providers beyond Anthropic and OpenAI (TypeSafe Jev is used only for match decisions), vector search, and automatic application submission.
 - Predicting actual recruiter decisions or guaranteeing ATS passage.
 
 ## Data entities
@@ -163,6 +178,7 @@ Personalized Resume converts a user's verified work history into a job-specific,
 - Tailoring persists the resume and cover letter together; if either generation fails, neither is saved.
 - Score can be recomputed from persisted factors without model call.
 - Job match score and recommendation can be recomputed from stored answers and overrides without a model call; only verified pairs reach generation when a match exists.
+- Saving the same LinkedIn listing twice never creates a second application for the user.
 - PDF contains selectable text, one column, standard headings, and no graphics required for meaning.
 - `pnpm test`, `pnpm typecheck`, and `pnpm build` pass.
 

@@ -234,9 +234,24 @@ Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update hando
   - Design hook false positives (near-black text on cyan primary buttons) are ignored per file in untracked `.impeccable/config.json` for `app/routes/application-detail.tsx` and `app/routes/application-tailor.tsx`.
   - Live Jev calls, dev-server smoke, and browser check not exercised: no `TYPESAFE_API_KEY` and no local database.
 
+## S13 — LinkedIn listings
+
+- Status: `IN_PROGRESS`
+- Depends on: S10 (applications with the `(user_id, source, external_id)` unique index); S11 and S12 are optional follow-on actions.
+- Intent: search LinkedIn job listings through a licensed aggregator API behind a pluggable provider, save listings to the board without duplicates, and jump straight into tailoring.
+- Files: `PRD.md`, `.env.example`, `app/lib/env.server.ts`, `app/lib/job-listings.ts`, `app/lib/job-listings.server.ts`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/components/application-card.tsx`, `app/routes.ts`, `app/routes/job-search.tsx`, `app/routes/app-layout.tsx`, `app/routes/applications-board.tsx`, `app/routes/application-detail.tsx`, `tests/*`
+- Acceptance:
+  - Env: `JOB_LISTINGS_PROVIDER` (`fantastic_jobs`, default) and optional `RAPIDAPI_KEY`. App boots without them; `/jobs` shows a not-configured state and never calls a provider.
+  - Pure `app/lib/job-listings.ts`: `JobListing` type; `jobSearchInputSchema` parses URL params (keywords 2–120 chars required, location ≤ 120, `postedWithin` `24h|7d|30d` default `7d`, remote flag, page 1–20 default 1); `htmlToPlainText` strips tags, drops script/style content, keeps paragraph and list breaks, decodes named and numeric entities once; `linkedInJobUrl(id)` returns `https://www.linkedin.com/jobs/view/{id}` only for IDs matching `^\d+$` and throws otherwise; `savedListingSchema` validates the posted listing; `listingToApplicationInput(listing)` returns a valid `ApplicationInput` (status `saved`, `sourceUrl` from `linkedInJobUrl`, truncated title/company/location, description, salary) plus origin `{ source: "linkedin", externalId }`.
+  - `app/lib/job-listings.server.ts`: `JobListingProvider.search(input)` returns `{ listings, hasMore }`. `FantasticJobsProvider` calls `GET https://linkedin-job-search-api.p.rapidapi.com/active-jb` with `x-rapidapi-key`/`x-rapidapi-host`, `title`, `location`, `time_frame` (`24h`, `7d`, or `6m` plus `date_posted_gte` for 30 days), `ai_work_arrangement=Remote OK,Remote Solely` when remote, `description_format=html`, `limit=25`, `offset`. Zod validates the array response; rows without a numeric LinkedIn ID (from `linkedin_id` or a `linkedin.com/jobs/view` URL) are dropped; salary maps from `ai_salary_*` only for year/month/hour units, ISO currency, and min ≤ max. 10 s timeout; non-200, timeout, network, and schema failures raise one generic `JobListingProviderError`; logs carry only provider and status.
+  - Repositories: `saveListingApplication(userId, input, externalId)` inserts with `ON CONFLICT DO NOTHING` and returns `{ application, created }`, returning the existing owned row on conflict; `listSavedListingIds(userId, externalIds)` maps saved LinkedIn IDs to application IDs.
+  - `/jobs` (`routes/job-search.tsx`): GET form keeps search in the URL; loader validates and calls the provider only with valid input; results show title, company, location, salary, posted date, and "View on LinkedIn"; listings already saved show "On your board" with a link. Action `save` creates a Saved application or reports "Already on your board" with a link; `save-and-tailor` redirects to `/applications/:id/tailor`. Saving does not re-run the search. Loading, empty, invalid-input, provider-error, and not-configured states.
+  - Board cards and application detail show the LinkedIn badge and a posting link built from the external ID. Nav includes "Find jobs".
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; live smoke needs `RAPIDAPI_KEY`.
+
 ## Handoff
 
-- Current task: none `IN_PROGRESS`.
+- Current task: S13 `IN_PROGRESS`.
 - Previous task: S12 `DONE`.
 - Last completed action: S12 Jev job match implemented (client, pure policy, `job_matches` table, orchestration, verified-evidence generation, Match section, card badge, overrides) and unit-tested.
 - Verification: `pnpm test && pnpm typecheck && pnpm build && pnpm check` pass (205 tests, 16 files); `pnpm db:generate` reports no changes.
