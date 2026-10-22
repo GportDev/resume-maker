@@ -416,7 +416,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U12 — Profile, AI settings, company, and auth pages
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02, U03
 - Intent: bring the remaining pages up to the shared system, and make the resume header visible where it is edited.
 - Files: `app/routes/profile.tsx`, `app/routes/ai-settings.tsx`, `app/routes/contribution-company.tsx`, `app/components/auth-form.tsx`, `app/routes/sign-in.tsx`, `app/routes/sign-up.tsx`
@@ -431,6 +431,13 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: no secret or key material shown beyond the last four characters. Auth redirect safety unchanged.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`; browser both widths; sign-up, sign-in, sign-out.
+- Evidence (2026-10-21):
+  - Profile: a live "Resume header preview" (paper strip: name, headline, contact line) that updates as you type (form-level `onChange`), field hints for headline, location, website, and LinkedIn, native `type=url`/`email`/`tel` validation, and the save toast (from U02).
+  - AI settings: the page header states the current state ("Using Anthropic with your key ••••abcd." / "…with the platform key." / a warning when the chosen provider has no key). Provider choice uses radio cards. Each provider section shows the masked personal key with its tested date, "Test and save" with an inline pass/fail message that fades in, a show/hide key toggle, and Revoke through ConfirmDialog (copy explains the fallback). No key material beyond the last four characters is rendered.
+  - Company page was moved to the shared primitives and ConfirmDialog in U05.
+  - Auth: binder look (wordmark, "Sign in / Create account" index tabs over a sheet that keep `redirectTo`), the one-line product statement "File your work history once. Every tailored resume cites it.", Field primitives, password show/hide toggle (`aria-pressed`), pending labels ("Signing in…"). Removed `transition` (all). Redirect safety logic unchanged.
+  - `pnpm test` 326 passed; `typecheck`, `check`, `build` pass.
+  - Browser: the AI settings header showed the no-key warning; typing a headline updated the profile preview immediately; sign-out → `/sign-in` rendered the tabs, the password toggle switched the input to `type=text`, and signing in through the form returned to `/`.
 
 ## U13 — Cross-app audit and finish
 

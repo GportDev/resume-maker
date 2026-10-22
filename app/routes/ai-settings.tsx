@@ -1,6 +1,12 @@
-import { useEffect, useRef } from "react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { data, Form, useNavigation } from "react-router";
 import { z } from "zod";
+import { Button } from "../components/ui/button";
+import { ConfirmDialog } from "../components/ui/confirm-dialog";
+import { Field, fieldClass } from "../components/ui/field";
+import { PageHeader, Sheet, SheetSection } from "../components/ui/sheet";
+import { Stamp } from "../components/ui/stamp";
 import {
   getPreferredAiProvider,
   logProviderError,
@@ -151,24 +157,39 @@ function ActionMessage({
     );
   }
   return (
-    <p role="status" className="text-sm text-ok">
+    <p role="status" className="fade-in text-sm text-ok">
       {actionData.success}
     </p>
   );
 }
 
-function ProviderKeyCard({
+type ProviderItem = Route.ComponentProps["loaderData"]["providers"][number];
+
+const testedFormat = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "UTC",
+});
+
+function keySource(item: ProviderItem) {
+  if (item.credential) return `your key ${item.credential.masked}`;
+  if (item.hasPlatformKey) return "the platform key";
+  return null;
+}
+
+function ProviderKeySection({
   item,
   isPreferred,
   actionData,
 }: {
-  item: Route.ComponentProps["loaderData"]["providers"][number];
+  item: ProviderItem;
   isPreferred: boolean;
   actionData: Route.ComponentProps["actionData"];
 }) {
   const navigation = useNavigation();
   const formRef = useRef<HTMLFormElement>(null);
   const details = aiProviderDetails[item.provider];
+  const [showKey, setShowKey] = useState(false);
   const isSubmittingHere =
     navigation.state === "submitting" &&
     navigation.formData?.get("provider") === item.provider &&
@@ -181,74 +202,102 @@ function ProviderKeyCard({
   }, [savedHere]);
 
   return (
-    <section
-      aria-labelledby={`${item.provider}-heading`}
-      className="rounded-2xl border border-rule bg-sheet p-6"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={`${item.provider}-heading`} className="text-xl font-semibold">
+    <SheetSection
+      id={`${item.provider}-heading`}
+      title={
+        <span className="flex items-center gap-2">
           {details.label}
-        </h2>
-        {isPreferred ? (
-          <span className="rounded-full bg-exhibit-tint px-3 py-1 text-xs text-exhibit-deep">
-            In use
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-5">
+          {isPreferred ? <Stamp tone="exhibit">In use</Stamp> : null}
+        </span>
+      }
+    >
+      <div className="max-w-2xl space-y-4">
         {item.credential ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-ok/30 bg-ok-tint p-4">
-            <div>
-              <p className="text-sm text-ok">Personal key active</p>
-              <p className="mt-1 font-mono">{item.credential.masked}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-rule bg-field px-4 py-3">
+            <div className="text-sm">
+              <p className="flex items-center gap-2 font-medium">
+                <KeyRound aria-hidden="true" className="size-4 text-ok" />
+                Personal key{" "}
+                <span className="font-mono text-ink-2">
+                  {item.credential.masked}
+                </span>
+              </p>
+              {item.credential.testedAt ? (
+                <p className="mt-0.5 text-[0.8125rem] text-ink-3">
+                  Tested{" "}
+                  {testedFormat.format(new Date(item.credential.testedAt))} UTC
+                </p>
+              ) : null}
             </div>
-            <Form method="post">
-              <input type="hidden" name="provider" value={item.provider} />
-              <button
-                type="submit"
-                name="intent"
-                value="revoke-key"
-                className="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger hover:border-danger"
-              >
-                Revoke key
-              </button>
-            </Form>
+            <ConfirmDialog
+              triggerLabel="Revoke key"
+              title={`Revoke your ${details.label} key?`}
+              description={
+                item.hasPlatformKey
+                  ? "The encrypted key is deleted. Requests fall back to the platform key."
+                  : "The encrypted key is deleted. Analysis with this provider stops until you add a key."
+              }
+              confirmLabel="Revoke key"
+              fields={{ intent: "revoke-key", provider: item.provider }}
+            />
           </div>
         ) : (
-          <p className="mb-6 rounded-xl border border-rule bg-field p-4 text-sm text-ink-2">
+          <p className="text-sm text-ink-2">
             {item.hasPlatformKey
-              ? "No personal key saved. Platform key will be used."
+              ? "No personal key saved. The platform key is used."
               : "No personal key saved and no platform key configured."}
           </p>
         )}
 
-        <Form ref={formRef} method="post" className="space-y-4">
+        <Form ref={formRef} method="post" className="space-y-3">
           <input type="hidden" name="provider" value={item.provider} />
-          <label className="block text-sm font-medium">
-            {item.credential ? "Replace API key" : "API key"}
-            <input
-              name="apiKey"
-              type="password"
-              autoComplete="off"
-              required
-              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 font-mono outline-none focus:border-exhibit"
-              placeholder={details.keyPlaceholder}
-            />
-          </label>
-          <ActionMessage actionData={actionData} scope={item.provider} />
-          <button
-            disabled={isSubmittingHere}
-            className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep"
-            type="submit"
-            name="intent"
-            value="save-key"
+          <Field
+            id={`${item.provider}-key`}
+            label={item.credential ? "Replace API key" : "API key"}
+            hint="Tested with the provider before saving. Stored encrypted; never shown again."
           >
-            {isSubmittingHere ? "Testing…" : "Test and save"}
-          </button>
+            <div className="relative">
+              <input
+                id={`${item.provider}-key`}
+                name="apiKey"
+                type={showKey ? "text" : "password"}
+                autoComplete="off"
+                spellCheck={false}
+                required
+                aria-describedby={`${item.provider}-key-hint`}
+                className={`${fieldClass} pr-11 font-mono text-sm`}
+                placeholder={details.keyPlaceholder}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((value) => !value)}
+                aria-label={showKey ? "Hide key" : "Show key"}
+                aria-pressed={showKey}
+                className="absolute inset-y-0 right-1 my-auto grid size-8 place-items-center rounded-[4px] text-ink-3 hover:bg-sheet-sunk hover:text-ink"
+              >
+                {showKey ? (
+                  <EyeOff aria-hidden="true" className="size-4" />
+                ) : (
+                  <Eye aria-hidden="true" className="size-4" />
+                )}
+              </button>
+            </div>
+          </Field>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="submit"
+              name="intent"
+              value="save-key"
+              variant="primary"
+              pending={isSubmittingHere}
+            >
+              {isSubmittingHere ? "Testing…" : "Test and save"}
+            </Button>
+            <ActionMessage actionData={actionData} scope={item.provider} />
+          </div>
         </Form>
       </div>
-    </section>
+    </SheetSection>
   );
 }
 
@@ -256,79 +305,85 @@ export default function AiSettings({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
+  const preferred = loaderData.providers.find(
+    (item) => item.provider === loaderData.preferredProvider,
+  );
+  const source = preferred ? keySource(preferred) : null;
+  const preferredLabel = aiProviderDetails[loaderData.preferredProvider].label;
+
   return (
-    <main id="main" className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
-        Bring your own key
-      </p>
-      <h1 className="mt-2 text-3xl font-semibold">AI settings</h1>
-      <p className="mt-3 text-ink-2">
-        Choose which provider reads job descriptions and rewrites your resume.
-        Keys are encrypted before storage, used only for your requests, and
-        never shown again after saving.
-      </p>
-
-      <section
-        aria-labelledby="provider-heading"
-        className="mt-8 rounded-2xl border border-rule bg-sheet p-6"
-      >
-        <h2 id="provider-heading" className="text-xl font-semibold">
-          Provider
-        </h2>
-        <Form method="post" className="mt-5 space-y-4">
-          <fieldset className="grid gap-3 sm:grid-cols-2">
-            <legend className="sr-only">AI provider</legend>
-            {loaderData.providers.map((item) => (
-              <label
-                key={item.provider}
-                className="flex cursor-pointer items-center gap-3 rounded-xl border border-rule-strong bg-field p-4 has-[:checked]:border-exhibit"
-              >
-                <input
-                  type="radio"
-                  name="provider"
-                  value={item.provider}
-                  defaultChecked={
-                    item.provider === loaderData.preferredProvider
-                  }
-                  className="size-4 accent-exhibit"
-                />
-                <span>
-                  <span className="block font-medium">
-                    {aiProviderDetails[item.provider].label}
+    <main id="main" className="mx-auto max-w-[90rem] px-4 pb-10 sm:px-6">
+      <Sheet className="rounded-t-none">
+        <PageHeader
+          title="AI settings"
+          meta={
+            source ? (
+              <span>
+                Using {preferredLabel} with {source}.
+              </span>
+            ) : (
+              <span className="text-warn">
+                {preferredLabel} has no key. Add one below before analyzing a
+                job.
+              </span>
+            )
+          }
+        />
+        <SheetSection
+          title="Provider"
+          id="provider-heading"
+          description="Which provider reads job descriptions and rewrites your evidence. Keys are encrypted and used only for your requests."
+        >
+          <Form method="post" className="max-w-2xl space-y-4">
+            <fieldset className="grid gap-3 sm:grid-cols-2">
+              <legend className="sr-only">AI provider</legend>
+              {loaderData.providers.map((item) => (
+                <label
+                  key={item.provider}
+                  className="flex cursor-pointer items-center gap-3 rounded-control border border-rule-strong bg-field p-3.5 has-[:checked]:border-exhibit has-[:checked]:bg-exhibit-tint/40"
+                >
+                  <input
+                    type="radio"
+                    name="provider"
+                    value={item.provider}
+                    defaultChecked={
+                      item.provider === loaderData.preferredProvider
+                    }
+                    className="size-4 accent-exhibit"
+                  />
+                  <span>
+                    <span className="block font-medium">
+                      {aiProviderDetails[item.provider].label}
+                    </span>
+                    <span className="block text-[0.8125rem] text-ink-3">
+                      {item.credential
+                        ? `Personal key ${item.credential.masked}`
+                        : item.hasPlatformKey
+                          ? "Platform key available"
+                          : "Needs a key"}
+                    </span>
                   </span>
-                  <span className="block text-xs text-ink-3">
-                    {item.credential
-                      ? "Personal key saved"
-                      : item.hasPlatformKey
-                        ? "Platform key available"
-                        : "Needs a key"}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <ActionMessage actionData={actionData} scope="preference" />
-          <button
-            type="submit"
-            name="intent"
-            value="set-provider"
-            className="rounded-xl bg-ink px-4 py-3 font-semibold text-sheet hover:bg-ink-2"
-          >
-            Save provider
-          </button>
-        </Form>
-      </section>
+                </label>
+              ))}
+            </fieldset>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" name="intent" value="set-provider">
+                Save provider
+              </Button>
+              <ActionMessage actionData={actionData} scope="preference" />
+            </div>
+          </Form>
+        </SheetSection>
 
-      <div className="mt-8 space-y-8">
         {loaderData.providers.map((item) => (
-          <ProviderKeyCard
+          <ProviderKeySection
             key={item.provider}
             item={item}
             isPreferred={item.provider === loaderData.preferredProvider}
             actionData={actionData}
           />
         ))}
-      </div>
+      </Sheet>
     </main>
   );
 }
