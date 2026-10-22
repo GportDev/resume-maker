@@ -79,7 +79,7 @@ export default function ResumeEditor({
   const isSaving = navigation.state === "submitting";
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
           to={

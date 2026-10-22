@@ -164,7 +164,7 @@ export default function ApplicationsBoard({
     navigation.location.pathname === "/applications";
 
   return (
-    <main id="main" className="mx-auto max-w-[100rem] px-4 py-8 sm:px-6">
+    <main id="main" className="mx-auto max-w-[90rem] px-4 py-8 sm:px-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[1.75rem] font-bold leading-tight tracking-[-0.015em]">

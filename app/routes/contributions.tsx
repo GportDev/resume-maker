@@ -77,7 +77,10 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
   const { folders } = loaderData;
 
   return (
-    <main className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+    <main
+      id="main"
+      className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[18rem_minmax(0,1fr)]"
+    >
       <aside className="space-y-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">

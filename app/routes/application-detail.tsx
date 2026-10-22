@@ -399,7 +399,7 @@ export default function ApplicationDetail({
     : null;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <Link
         to="/applications"
         className="text-sm text-exhibit hover:text-exhibit-deep"

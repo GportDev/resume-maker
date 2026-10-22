@@ -1,5 +1,6 @@
 import {
   isRouteErrorResponse,
+  Link,
   Links,
   Meta,
   Outlet,
@@ -46,33 +47,48 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = "Something went wrong";
+  let details =
+    "The page could not be loaded. Try again, or go back to your home page.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
-    details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
+    if (error.status === 404) {
+      message = "Page not found";
+      details =
+        typeof error.data === "string" && error.data
+          ? error.data
+          : "This page does not exist or is not yours to view.";
+    } else {
+      details = error.statusText || details;
+    }
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
   }
 
   return (
-    <main className="container mx-auto px-4 py-20">
-      <p className="text-sm font-semibold uppercase tracking-wider text-exhibit">
-        Resume Fit
-      </p>
-      <h1 className="mt-3 text-4xl font-semibold">{message}</h1>
-      <p className="mt-3 text-ink-2">{details}</p>
-      {stack && (
-        <pre className="mt-6 w-full overflow-x-auto rounded-xl bg-sheet p-4 text-xs">
-          <code>{stack}</code>
-        </pre>
-      )}
+    <main id="main" className="mx-auto max-w-2xl px-4 py-16">
+      <div className="rounded-sheet bg-sheet p-8 shadow-sheet">
+        <Link to="/" className="text-sm font-extrabold tracking-[-0.02em]">
+          Resume<span className="text-exhibit">&nbsp;Fit</span>
+        </Link>
+        <h1 className="mt-6 text-[1.75rem] font-bold leading-tight">
+          {message}
+        </h1>
+        <p className="mt-2 text-ink-2">{details}</p>
+        <Link
+          to="/"
+          className="pressable mt-6 inline-flex h-9 items-center rounded-control bg-exhibit px-3.5 text-sm font-medium text-sheet hover:bg-exhibit-deep"
+        >
+          Go to home
+        </Link>
+        {stack ? (
+          <pre className="mt-6 w-full overflow-x-auto rounded-control bg-sheet-sunk p-4 font-mono text-xs">
+            <code>{stack}</code>
+          </pre>
+        ) : null}
+      </div>
     </main>
   );
 }

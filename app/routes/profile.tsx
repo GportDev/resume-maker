@@ -88,14 +88,14 @@ export default function Profile({
   ] as const;
 
   return (
-    <main id="main" className="mx-auto max-w-[75rem] px-4 py-8 sm:px-6">
-      <Sheet>
+    <main id="main" className="mx-auto max-w-[90rem] px-4 pb-10 sm:px-6">
+      <Sheet className="rounded-t-none">
         <PageHeader
           title="Profile"
           meta="Contact details printed at the top of every resume and cover letter."
         />
         <SheetSection title="Contact details" id="contact-heading">
-          <Form method="post" className="grid gap-5 sm:grid-cols-2">
+          <Form method="post" className="grid max-w-3xl gap-5 sm:grid-cols-2">
             {fields.map(([name, label, defaultValue, type, autoComplete]) => (
               <Field key={name} id={name} label={label} error={errors[name]}>
                 <input

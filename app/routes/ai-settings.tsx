@@ -257,7 +257,7 @@ export default function AiSettings({
   actionData,
 }: Route.ComponentProps) {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
         Bring your own key
       </p>

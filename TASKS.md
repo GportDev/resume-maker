@@ -109,7 +109,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U03 — App shell and navigation
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02
 - Intent: navigation that follows the job-hunt loop and works on a phone.
 - Files: `app/routes/app-layout.tsx`, `app/root.tsx` (ErrorBoundary), `app/components/ui/*`
@@ -124,6 +124,14 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: nav never wraps or scrolls horizontally at 390px. The active route is visible without color alone. The account menu is keyboard-operable (Escape closes and returns focus). Sign-out pending state is kept.
 - Verify: browser at 390, 768, and 1440; keyboard pass; `pnpm typecheck && pnpm build`.
+- Evidence (2026-10-21):
+  - `app/routes/app-layout.tsx`: board-colored top band with the wordmark and index tabs (Home, Find jobs, Applications, Contributions, Profile). The active tab is sheet-colored and joins the page sheet (sheet pages drop their top radius and top padding). Account menu (initials avatar) holds name, email, AI settings, and Sign out. Below `md`, tabs collapse into a "Menu" button. Tab switching has no animation.
+  - New `app/components/ui/popover.tsx`: native `popover="auto"` (light dismiss, Escape, top layer, works without JS), positioned under its trigger, scales from the trigger edge over 100ms.
+  - Skip link to `#main`; every page `<main>` now has `id="main"`.
+  - Root `ErrorBoundary`: "Page not found" / "Something went wrong" with a home link, on a sheet.
+  - Header and page containers share `max-w-[90rem]`.
+  - `.impeccable/questions/` is gitignored; the decision log committed in U02 was removed from the index.
+  - Checks: `pnpm check`, `typecheck`, `test` (261), `build` pass. Browser: tabs and active join at 1024; account menu opens under the avatar, Escape closes it; at 375×812, `scrollWidth` is 375 (no horizontal scroll) and the Menu popover lists all tabs.
 
 ## U04 — Notion-style live-preview Markdown editor
 

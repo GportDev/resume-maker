@@ -498,7 +498,7 @@ export default function JobSearch({ loaderData }: Route.ComponentProps) {
     navigation.state === "loading" && navigation.location.pathname === "/jobs";
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-semibold">Find jobs</h1>
       <p className="mt-2 max-w-2xl text-sm text-ink-2">
         Search LinkedIn listings, save the ones worth pursuing to your board,

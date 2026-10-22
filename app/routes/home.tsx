@@ -102,7 +102,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
   const isAnalyzing = navigation.state === "submitting";
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+    <main id="main" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
         Quick tailor
       </p>

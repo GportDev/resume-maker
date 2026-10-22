@@ -191,7 +191,7 @@ export default function ApplicationTailor({
   const busy = Boolean(pendingIntent);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <Link
         to={`/applications/${application.id}`}
         className="text-sm text-exhibit hover:text-exhibit-deep"

@@ -43,7 +43,10 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-field px-4 py-12 text-ink">
+    <main
+      id="main"
+      className="grid min-h-screen place-items-center bg-field px-4 py-12 text-ink"
+    >
       <section className="w-full max-w-md rounded-3xl border border-rule bg-sheet p-8 shadow-2xl shadow-sheet">
         <Link to="/" className="text-sm font-semibold text-exhibit">
           Resume Fit
