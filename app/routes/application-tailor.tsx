@@ -1,7 +1,11 @@
+import { useEffect, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { z } from "zod";
 import { AnalysisSummary, FitScore } from "../components/analysis-summary";
 import { MatchBadge } from "../components/application-card";
+import { Button, buttonClass, textLinkClass } from "../components/ui/button";
+import { Field, fieldClass } from "../components/ui/field";
+import { PageHeader, Sheet, SheetSection } from "../components/ui/sheet";
 import {
   jobAnalysisSchema,
   jobDescriptionInputSchema,
@@ -10,6 +14,7 @@ import {
   scoreBreakdownSchema,
 } from "../lib/analysis";
 import { requireUser } from "../lib/auth.server";
+import { exhibitNumbers } from "../lib/contributions";
 import { reconcileAnalysisMatches } from "../lib/job-match";
 import { parseStoredJobMatch } from "../lib/job-match.server";
 import { matchKeywordsToExperiences } from "../lib/keyword-match";
@@ -83,6 +88,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       })()
     : null;
   const documents = summaries.get(application.id);
+  const exhibits = exhibitNumbers(experienceList);
 
   return {
     application: {
@@ -96,6 +102,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       id,
       position,
       company,
+      exhibit: exhibits.get(id) ?? null,
     })),
     hasDocuments: Boolean(documents?.resumeId || documents?.coverLetterId),
   };
@@ -166,13 +173,58 @@ export async function action({ request, params }: Route.ActionArgs) {
   return failure("analyze", 400, "Unknown action.");
 }
 
-function formatDateTime(value: Date): string {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-  }).format(new Date(value));
+const generationSteps = [
+  "Selecting verified evidence",
+  "Writing the resume",
+  "Writing the cover letter",
+  "Saving both documents",
+];
+
+function GenerationProgress() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const timer = window.setInterval(
+      () => setElapsed(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+  // Steps are an honest estimate of order, not server progress events.
+  const current = Math.min(generationSteps.length - 1, Math.floor(elapsed / 8));
+  return (
+    <div role="status" className="mt-4 rounded-control bg-sheet-sunk p-3">
+      <p className="text-sm font-medium">
+        Writing documents · <span className="tabular">{elapsed}s</span>
+      </p>
+      <ol className="mt-2 space-y-1 text-[0.8125rem]">
+        {generationSteps.map((step, index) => (
+          <li
+            key={step}
+            className={
+              index < current
+                ? "text-ink-3 line-through decoration-ink-3/50"
+                : index === current
+                  ? "font-medium text-ink"
+                  : "text-ink-3"
+            }
+          >
+            {step}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2 text-xs text-ink-3">
+        Both documents save together, or neither does. Keep this tab open.
+      </p>
+    </div>
+  );
 }
+
+const analyzedFormat = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "UTC",
+});
 
 export default function ApplicationTailor({
   loaderData,
@@ -189,38 +241,18 @@ export default function ApplicationTailor({
   const generateError =
     actionData?.intent === "generate" ? actionData.error : undefined;
   const busy = Boolean(pendingIntent);
+  const words = application.jobDescription.trim()
+    ? application.jobDescription.trim().split(/\s+/).length
+    : 0;
 
-  return (
-    <main id="main" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <Link
-        to={`/applications/${application.id}`}
-        className="text-sm text-exhibit hover:text-exhibit-deep"
+  const descriptionForm = (
+    <Form method="post" className="space-y-3">
+      <Field
+        id="jobDescription"
+        label="Job description"
+        error={analyzeError}
+        hint="Saved on the application when you analyze. Use the full posting, including requirements."
       >
-        ← Back to application
-      </Link>
-      <div className="mt-5">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
-          Tailor
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold">{application.position}</h1>
-        <p className="mt-1 text-ink-2">{application.companyName}</p>
-      </div>
-
-      <Form
-        method="post"
-        className="mt-8 rounded-2xl border border-rule bg-sheet p-6"
-      >
-        <h2 className="text-xl font-semibold">1. Job description</h2>
-        <label
-          htmlFor="jobDescription"
-          className="mt-4 block text-sm font-medium"
-        >
-          Job description
-        </label>
-        <p id="jobDescription-hint" className="mt-1 text-xs text-ink-3">
-          Saved on the application when you analyze. Use the full posting,
-          including requirements.
-        </p>
         <textarea
           id="jobDescription"
           name="jobDescription"
@@ -228,130 +260,173 @@ export default function ApplicationTailor({
           minLength={jobDescriptionMinLength}
           maxLength={jobDescriptionMaxLength}
           required
-          rows={14}
           aria-describedby={
-            analyzeError
-              ? "jobDescription-hint analyze-error"
-              : "jobDescription-hint"
+            analyzeError ? "jobDescription-error" : "jobDescription-hint"
           }
           aria-invalid={analyzeError ? true : undefined}
-          className="mt-3 w-full rounded-xl border border-rule-strong bg-field p-4 font-mono text-sm leading-6 outline-none focus:border-exhibit"
+          className={`${fieldClass} min-h-56 max-h-[60vh] font-mono text-sm leading-6 [field-sizing:content]`}
           placeholder="Paste the complete role description here…"
         />
-        {analyzeError ? (
-          <p
-            id="analyze-error"
-            className="mt-3 text-sm text-danger"
-            role="alert"
-          >
-            {analyzeError}
-          </p>
-        ) : null}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm text-ink-3">
-            {positions.length} position{positions.length === 1 ? "" : "s"} to
-            match
-            {!positions.length ? (
+      </Field>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink-3">
+          {positions.length} position{positions.length === 1 ? "" : "s"} to
+          match
+          {!positions.length ? (
+            <>
+              {" · "}
+              <Link to="/contributions/new" className={textLinkClass}>
+                Add a position first
+              </Link>
+            </>
+          ) : null}
+        </p>
+        <Button
+          type="submit"
+          name="intent"
+          value="analyze"
+          variant={latest ? "secondary" : "primary"}
+          disabled={busy}
+          pending={pendingIntent === "analyze"}
+        >
+          {pendingIntent === "analyze"
+            ? "Analyzing…"
+            : latest
+              ? "Analyze again"
+              : "Analyze job"}
+        </Button>
+      </div>
+    </Form>
+  );
+
+  return (
+    <main
+      id="main"
+      className="mx-auto grid max-w-[90rem] gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
+    >
+      <Sheet className="rounded-t-none">
+        <PageHeader
+          back={
+            <Link
+              to={`/applications/${application.id}`}
+              className={textLinkClass}
+            >
+              ← {application.position}
+            </Link>
+          }
+          title={`Tailor for ${application.companyName}`}
+          meta={application.position}
+        />
+
+        {latest ? (
+          <SheetSection
+            title="Job description"
+            id="jd-summary-heading"
+            description={
               <>
-                {" · "}
-                <Link
-                  to="/contributions"
-                  className="text-exhibit hover:text-exhibit-deep"
-                >
-                  Add experience first
-                </Link>
+                {words} words · analyzed{" "}
+                {analyzedFormat.format(new Date(latest.createdAt))} UTC
+                {latest.jobDescriptionChanged ? (
+                  <span className="text-warn">
+                    {" "}
+                    · changed since; analyze again to update
+                  </span>
+                ) : null}
               </>
-            ) : null}
-          </p>
-          <button
-            type="submit"
-            name="intent"
-            value="analyze"
-            disabled={busy}
-            className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
+            }
           >
-            {pendingIntent === "analyze"
-              ? "Analyzing…"
-              : latest
-                ? "Analyze again"
-                : "Analyze job"}
-          </button>
-        </div>
-      </Form>
+            <details open={Boolean(analyzeError)} className="group/jd">
+              <summary
+                className={`${buttonClass({ variant: "secondary", size: "sm" })} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+              >
+                <span className="group-open/jd:hidden">
+                  Edit and re-analyze
+                </span>
+                <span className="hidden group-open/jd:inline">
+                  Hide description
+                </span>
+              </summary>
+              <div className="mt-4">{descriptionForm}</div>
+            </details>
+          </SheetSection>
+        ) : (
+          <SheetSection
+            title="Job description"
+            id="jd-heading"
+            description="Analysis extracts requirements and keywords, then checks them against your filed positions."
+          >
+            {descriptionForm}
+          </SheetSection>
+        )}
+
+        {latest ? (
+          <AnalysisSummary
+            analysis={latest.analysis}
+            score={latest.score}
+            keywordMatch={latest.keywordMatch}
+            positions={positions}
+            matchVerification={latest.matchVerification}
+          />
+        ) : (
+          <SheetSection>
+            <p className="rounded-sheet border border-dashed border-rule-strong p-8 text-center text-sm text-ink-2">
+              Analyze the job description to see keyword matches for each
+              position before generating documents.
+            </p>
+          </SheetSection>
+        )}
+      </Sheet>
 
       {latest ? (
-        <section
-          aria-labelledby="analysis-heading"
-          className="mt-10 grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]"
-        >
-          <aside className="lg:sticky lg:top-6 lg:self-start">
-            <FitScore score={latest.score}>
-              <Form method="post" className="mt-6">
-                <input type="hidden" name="analysisId" value={latest.id} />
-                <button
-                  type="submit"
-                  name="intent"
-                  value="generate"
-                  disabled={busy}
-                  className="w-full rounded-xl bg-exhibit px-4 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
-                >
-                  {pendingIntent === "generate"
-                    ? "Writing documents…"
-                    : "Generate resume and cover letter"}
-                </button>
-              </Form>
-              {latest.jobMatch ? (
-                <div className="mt-4 text-xs leading-5 text-ink-3">
-                  <MatchBadge match={latest.jobMatch} />
-                  <p className="mt-2">
-                    Documents use only matches verified by the job match.{" "}
-                    <Link
-                      to={`/applications/${application.id}`}
-                      className="text-exhibit hover:text-exhibit-deep"
-                    >
-                      Review match
-                    </Link>
-                  </p>
-                </div>
-              ) : null}
-              {hasDocuments ? (
-                <p className="mt-3 text-xs text-ink-3">
-                  Generating again saves new versions. The card shows the
-                  latest.
+        <aside className="lg:sticky lg:top-4 lg:self-start lg:pt-6">
+          <FitScore score={latest.score}>
+            <Form method="post" className="mt-5 border-t border-rule pt-4">
+              <input type="hidden" name="analysisId" value={latest.id} />
+              <Button
+                type="submit"
+                name="intent"
+                value="generate"
+                variant="primary"
+                className="w-full"
+                disabled={busy}
+                pending={pendingIntent === "generate"}
+              >
+                {pendingIntent === "generate"
+                  ? "Writing documents…"
+                  : hasDocuments
+                    ? "Write new versions"
+                    : "Write resume and cover letter"}
+              </Button>
+            </Form>
+            {pendingIntent === "generate" ? <GenerationProgress /> : null}
+            {latest.jobMatch ? (
+              <div className="mt-4 text-xs leading-5 text-ink-3">
+                <MatchBadge match={latest.jobMatch} />
+                <p className="mt-2">
+                  Documents use only matches verified by the job match.{" "}
+                  <Link
+                    to={`/applications/${application.id}`}
+                    className={textLinkClass}
+                  >
+                    Review match
+                  </Link>
                 </p>
-              ) : null}
-              {generateError ? (
-                <p className="mt-3 text-sm text-danger" role="alert">
-                  {generateError}
-                </p>
-              ) : null}
-            </FitScore>
-          </aside>
-          <div>
-            <h2 id="analysis-heading" className="text-xl font-semibold">
-              2. Review matches and gaps
-            </h2>
-            <p className="mt-1 mb-6 text-sm text-ink-3">
-              Analyzed {formatDateTime(latest.createdAt)} UTC
-              {latest.jobDescriptionChanged
-                ? ". The job description changed since; analyze again to update."
-                : "."}
-            </p>
-            <AnalysisSummary
-              analysis={latest.analysis}
-              score={latest.score}
-              keywordMatch={latest.keywordMatch}
-              positions={positions}
-              matchVerification={latest.matchVerification}
-            />
-          </div>
-        </section>
-      ) : (
-        <p className="mt-8 rounded-2xl border border-dashed border-rule-strong p-8 text-center text-sm text-ink-2">
-          Analyze the job description to see keyword matches for each position
-          before generating documents.
-        </p>
-      )}
+              </div>
+            ) : null}
+            {hasDocuments && pendingIntent !== "generate" ? (
+              <p className="mt-3 text-xs text-ink-3">
+                Writing again saves new versions. The application shows the
+                latest.
+              </p>
+            ) : null}
+            {generateError ? (
+              <p className="mt-3 text-sm text-danger" role="alert">
+                {generateError}
+              </p>
+            ) : null}
+          </FitScore>
+        </aside>
+      ) : null}
     </main>
   );
 }

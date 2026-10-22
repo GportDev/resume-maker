@@ -1,4 +1,6 @@
+import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import {
   getLearningResources,
   type JobAnalysis,
@@ -6,25 +8,19 @@ import {
 } from "../lib/analysis";
 import type { MatchVerification } from "../lib/job-match";
 import type { KeywordMatchResult } from "../lib/keyword-match";
+import { FitBreakdown } from "./fit-breakdown";
+import { textLinkClass } from "./ui/button";
+import { SheetSection } from "./ui/sheet";
+import { Stamp } from "./ui/stamp";
 
-const factorLabels = {
-  keywordCoverage: "Keyword coverage",
-  requiredSkillCoverage: "Required skills",
-  evidenceStrength: "Evidence strength",
-  titleAlignment: "Title alignment",
-  profileCompleteness: "Profile completeness",
-} as const satisfies Record<Exclude<keyof ScoreBreakdown, "total">, string>;
-
-const factorMaximums: Record<keyof typeof factorLabels, number> = {
-  keywordCoverage: 25,
-  requiredSkillCoverage: 35,
-  evidenceStrength: 25,
-  titleAlignment: 10,
-  profileCompleteness: 5,
+export type PositionLabel = {
+  id: string;
+  position: string;
+  company: string;
+  exhibit?: number | null;
 };
 
-export type PositionLabel = { id: string; position: string; company: string };
-
+/** Fit estimate with its factor breakdown, plus any actions below it. */
 export function FitScore({
   score,
   children,
@@ -33,35 +29,72 @@ export function FitScore({
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-rule bg-sheet p-6">
-      <p className="text-sm uppercase tracking-wider text-ink-3">
-        Fit estimate
-      </p>
-      <p className="mt-2 text-6xl font-semibold text-exhibit-deep">
-        {score.total}
-      </p>
-      <p className="text-sm text-ink-3">out of 100</p>
-      <p className="mt-5 text-xs leading-5 text-ink-3">
-        Heuristic based on your stored evidence. Not hiring probability or
-        guarantee.
-      </p>
+    <div className="rounded-sheet bg-sheet p-5 shadow-sheet">
+      <FitBreakdown score={score} />
       {children}
     </div>
   );
 }
 
-function Chip({ matched, children }: { matched: boolean; children: string }) {
+/** "Ex. 3" citation linking back to the contribution file it came from. */
+export function ExhibitCitation({ position }: { position: PositionLabel }) {
   return (
-    <li
-      className={`rounded-full px-2.5 py-1 text-xs ${
-        matched
-          ? "bg-ok-tint text-ok"
-          : "border border-dashed border-rule-strong text-ink-2"
-      }`}
+    <Link
+      to={`/contributions/${position.id}`}
+      title={`${position.position} · ${position.company}`}
+      className="inline-flex items-center gap-1.5 rounded-stamp bg-manila-tint px-1.5 py-0.5 text-[0.75rem] text-manila-ink hover:bg-manila/40"
     >
-      <span className="sr-only">{matched ? "Matched: " : "Not found: "}</span>
-      {children}
-    </li>
+      {position.exhibit ? (
+        <span className="text-[0.6875rem] font-bold tracking-[0.06em] uppercase">
+          Ex. {position.exhibit}
+        </span>
+      ) : null}
+      <span className="max-w-[16rem] truncate">{position.position}</span>
+    </Link>
+  );
+}
+
+function KeywordList({
+  title,
+  keywords,
+  tone,
+  empty,
+  footer,
+}: {
+  title: string;
+  keywords: string[];
+  tone: "found" | "missing";
+  empty: string;
+  footer?: ReactNode;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold">
+        {title}{" "}
+        <span className="tabular font-normal text-ink-3">
+          {keywords.length}
+        </span>
+      </h3>
+      {keywords.length ? (
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {keywords.map((keyword) => (
+            <li
+              key={keyword}
+              className={`rounded-full px-2.5 py-0.5 text-[0.8125rem] ${
+                tone === "found"
+                  ? "bg-ok-tint text-ok"
+                  : "border border-dashed border-rule-strong text-ink-2"
+              }`}
+            >
+              {keyword}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-[0.8125rem] text-ink-3">{empty}</p>
+      )}
+      {footer}
+    </div>
   );
 }
 
@@ -76,218 +109,239 @@ function KeywordSection({
     ...new Set(keywordMatch.experiences.flatMap((row) => row.matchedKeywords)),
   ];
   const labels = new Map(positions.map((position) => [position.id, position]));
+  const rows = [...keywordMatch.experiences].sort(
+    (left, right) =>
+      right.matchedKeywords.length +
+      right.matchedRequiredSkills.length -
+      (left.matchedKeywords.length + left.matchedRequiredSkills.length),
+  );
 
   return (
     <>
-      <section className="rounded-2xl border border-rule bg-sheet p-6">
-        <h2 className="text-xl font-semibold">ATS keywords</h2>
-        <p className="mt-1 text-sm text-ink-3">
-          {matched.length} found in your experience,{" "}
-          {keywordMatch.unmatchedKeywords.length} not found.
-        </p>
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {matched.map((keyword) => (
-            <Chip key={`m:${keyword}`} matched>
-              {keyword}
-            </Chip>
-          ))}
-          {keywordMatch.unmatchedKeywords.map((keyword) => (
-            <Chip key={`u:${keyword}`} matched={false}>
-              {keyword}
-            </Chip>
-          ))}
-        </ul>
-      </section>
+      <SheetSection
+        title="ATS keywords"
+        id="keywords-heading"
+        description="Exact terms from the posting, checked against your contribution files."
+      >
+        <div className="grid gap-6 md:grid-cols-2">
+          <KeywordList
+            title="In your evidence"
+            keywords={matched}
+            tone="found"
+            empty="None of the posting's keywords appear in your files yet."
+          />
+          <KeywordList
+            title="Not found"
+            keywords={keywordMatch.unmatchedKeywords}
+            tone="missing"
+            empty="Every keyword appears somewhere in your evidence."
+            footer={
+              keywordMatch.unmatchedKeywords.length ? (
+                <p className="mt-3 text-[0.8125rem] text-ink-3">
+                  If you have real experience with one of these,{" "}
+                  <Link to="/contributions" className={textLinkClass}>
+                    add it to the right contribution file
+                  </Link>{" "}
+                  and analyze again. Never add terms you cannot back up.
+                </p>
+              ) : null
+            }
+          />
+        </div>
+      </SheetSection>
 
-      <section className="rounded-2xl border border-rule bg-sheet p-6">
-        <h2 className="text-xl font-semibold">Matches by position</h2>
-        {keywordMatch.experiences.length ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead className="text-xs uppercase tracking-wider text-ink-3">
-                <tr>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    Position
-                  </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    Keywords
-                  </th>
-                  <th scope="col" className="py-2 font-medium">
-                    Required skills
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-rule">
-                {keywordMatch.experiences.map((row) => {
-                  const label = labels.get(row.experienceId);
-                  return (
-                    <tr key={row.experienceId} className="align-top">
-                      <th scope="row" className="py-3 pr-4 font-medium">
-                        {label?.position ?? "Position"}
-                        <span className="block text-xs font-normal text-ink-3">
+      <SheetSection
+        title="Matches by position"
+        id="positions-heading"
+        description="Which filed positions mention the posting's keywords and required skills."
+      >
+        {rows.length ? (
+          <ul className="divide-y divide-rule border-y border-rule">
+            {rows.map((row) => {
+              const label = labels.get(row.experienceId);
+              const total =
+                row.matchedKeywords.length + row.matchedRequiredSkills.length;
+              return (
+                <li key={row.experienceId}>
+                  <details className="group/row">
+                    <summary className="flex cursor-pointer list-none items-center gap-3 py-3 [&::-webkit-details-marker]:hidden">
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-ink-3 transition-transform duration-150 group-open/row:rotate-90"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {label?.position ?? "Position"}
+                        </span>
+                        <span className="block truncate text-[0.8125rem] text-ink-3">
                           {label?.company}
                         </span>
-                      </th>
-                      <td className="py-3 pr-4 text-ink-2">
-                        {row.matchedKeywords.join(", ") || (
-                          <span className="text-ink-3">None</span>
-                        )}
-                      </td>
-                      <td className="py-3 text-ink-2">
-                        {row.matchedRequiredSkills.join(", ") || (
-                          <span className="text-ink-3">None</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </span>
+                      <span className="tabular shrink-0 text-right text-[0.8125rem] text-ink-2">
+                        {row.matchedKeywords.length} keywords ·{" "}
+                        {row.matchedRequiredSkills.length} required
+                      </span>
+                      {total === 0 ? (
+                        <span className="sr-only">No matches</span>
+                      ) : null}
+                    </summary>
+                    <dl className="grid gap-3 pb-4 pl-7 text-[0.8125rem] sm:grid-cols-2">
+                      <div>
+                        <dt className="text-ink-3">Keywords</dt>
+                        <dd className="mt-0.5 text-ink">
+                          {row.matchedKeywords.join(", ") || "None"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-ink-3">Required skills</dt>
+                        <dd className="mt-0.5 text-ink">
+                          {row.matchedRequiredSkills.join(", ") || "None"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </details>
+                </li>
+              );
+            })}
+          </ul>
         ) : (
-          <p className="mt-3 text-sm text-ink-3">
-            No positions to compare. Add experience first.
+          <p className="text-sm text-ink-3">
+            No positions to compare.{" "}
+            <Link to="/contributions/new" className={textLinkClass}>
+              Add a position
+            </Link>
+            .
           </p>
         )}
-      </section>
+      </SheetSection>
     </>
   );
 }
 
 export function AnalysisSummary({
   analysis,
-  score,
   keywordMatch,
   positions = [],
   matchVerification,
 }: {
   analysis: JobAnalysis;
-  score: ScoreBreakdown;
+  score?: ScoreBreakdown;
   keywordMatch?: KeywordMatchResult;
   positions?: PositionLabel[];
   matchVerification?: MatchVerification[];
 }) {
+  const labels = new Map(positions.map((position) => [position.id, position]));
   const gaps = analysis.missingSkills.map((skill) => ({
     skill,
     resources: getLearningResources(skill),
   }));
 
   return (
-    <div className="space-y-8">
-      <section
-        aria-label="Score factors"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
-      >
-        {Object.entries(factorLabels).map(([key, label]) => {
-          const factor = key as keyof typeof factorLabels;
-          return (
-            <div
-              key={key}
-              className="rounded-xl border border-rule bg-sheet p-4"
-            >
-              <p className="text-xs text-ink-3">{label}</p>
-              <p className="mt-2 text-2xl font-semibold">
-                {score[factor]}
-                <span className="text-sm font-normal text-ink-3">
-                  {" "}
-                  / {factorMaximums[factor]}
-                </span>
-              </p>
-            </div>
-          );
-        })}
-      </section>
-
+    <>
       {keywordMatch ? (
         <KeywordSection keywordMatch={keywordMatch} positions={positions} />
       ) : null}
 
-      <section className="rounded-2xl border border-rule bg-sheet p-6">
-        <h2 className="text-xl font-semibold">Evidence matches</h2>
-        {matchVerification ? (
-          <p className="mt-1 text-sm text-ink-3">
-            Job match checked these. Only verified matches are used to write
-            documents.
-          </p>
-        ) : null}
-        <div className="mt-5 space-y-4">
-          {analysis.matches.map((match, index) => {
-            const verification = matchVerification?.[index];
-            return (
-              <article
-                key={`${match.requirement}:${match.experienceIds.join(":")}:${match.evidence}`}
-                className="rounded-xl bg-field p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="font-medium">{match.requirement}</h3>
-                  <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-                    {verification ? (
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs ${
-                          verification === "verified"
-                            ? "bg-exhibit-tint text-exhibit-deep"
-                            : "border border-dashed border-warn/60 text-warn"
-                        }`}
+      <SheetSection
+        title="Evidence matches"
+        id="evidence-heading"
+        description={
+          matchVerification
+            ? "Job match checked these. Only verified matches are used to write documents."
+            : "Requirements paired with the evidence that supports them. Each cites its exhibit."
+        }
+      >
+        {analysis.matches.length ? (
+          <ol className="divide-y divide-rule border-y border-rule">
+            {analysis.matches.map((match, index) => {
+              const verification = matchVerification?.[index];
+              return (
+                <li
+                  key={`${match.requirement}:${match.experienceIds.join(":")}:${match.evidence}`}
+                  className="py-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                    <h3 className="min-w-0 flex-1 text-[0.9375rem] font-medium">
+                      {match.requirement}
+                    </h3>
+                    <div className="flex shrink-0 flex-wrap gap-1.5">
+                      {verification ? (
+                        <Stamp
+                          tone={verification === "verified" ? "ok" : "warn"}
+                        >
+                          {verification === "verified"
+                            ? "Verified"
+                            : "Unverified, excluded"}
+                        </Stamp>
+                      ) : null}
+                      <Stamp
+                        tone={match.strength === "strong" ? "ok" : "neutral"}
                       >
-                        {verification === "verified"
-                          ? "Verified"
-                          : "Unverified, excluded"}
-                      </span>
-                    ) : null}
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        match.strength === "strong"
-                          ? "bg-ok-tint text-ok"
-                          : "bg-warn-tint text-warn"
-                      }`}
-                    >
-                      {match.strength}
-                    </span>
+                        {match.strength}
+                      </Stamp>
+                    </div>
                   </div>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-ink-2">
-                  {match.evidence}
-                </p>
-              </article>
-            );
-          })}
-          {!analysis.matches.length ? (
-            <p className="text-sm text-ink-3">
-              No supported matches found. Add more detailed experience evidence
-              before generating.
-            </p>
-          ) : null}
-        </div>
-      </section>
+                  <p className="mt-1.5 max-w-[72ch] font-serif text-[0.9375rem] leading-6 text-ink-2">
+                    {match.evidence}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {match.experienceIds.map((id) => {
+                      const position = labels.get(id);
+                      return position ? (
+                        <ExhibitCitation key={id} position={position} />
+                      ) : null;
+                    })}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="text-sm text-ink-3">
+            No supported matches found. Add more detailed experience evidence
+            before generating.
+          </p>
+        )}
+      </SheetSection>
 
-      <section className="rounded-2xl border border-rule bg-sheet p-6">
-        <h2 className="text-xl font-semibold">Missing skills and keywords</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {gaps.map(({ skill, resources }) => (
-            <article key={skill} className="rounded-xl bg-field p-4">
-              <h3 className="font-medium">{skill}</h3>
-              <div className="mt-3 flex gap-3">
-                {resources.map((resource) => (
-                  <a
-                    key={resource.label}
-                    href={resource.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-exhibit hover:text-exhibit-deep"
-                  >
-                    Learn on {resource.label}
-                  </a>
-                ))}
-              </div>
-            </article>
-          ))}
-          {!gaps.length ? (
-            <p className="text-sm text-ok">
-              No explicit required-skill gaps found.
-            </p>
-          ) : null}
-        </div>
-      </section>
-    </div>
+      <SheetSection
+        title="Gaps"
+        id="gaps-heading"
+        description="Required skills your evidence does not show. Learning links come from an allowlist."
+      >
+        {gaps.length ? (
+          <ul className="divide-y divide-rule border-y border-rule">
+            {gaps.map(({ skill, resources }) => (
+              <li
+                key={skill}
+                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3"
+              >
+                <span className="min-w-40 flex-1 text-sm font-medium">
+                  {skill}
+                </span>
+                <span className="flex flex-wrap gap-3 text-[0.8125rem]">
+                  {resources.map((resource) => (
+                    <a
+                      key={resource.label}
+                      href={resource.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={textLinkClass}
+                    >
+                      Learn on {resource.label}
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-ok">
+            No explicit required-skill gaps found.
+          </p>
+        )}
+      </SheetSection>
+    </>
   );
 }

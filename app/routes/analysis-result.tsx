@@ -1,8 +1,11 @@
 import { Link } from "react-router";
 import { z } from "zod";
 import { AnalysisSummary, FitScore } from "../components/analysis-summary";
+import { ButtonLink, textLinkClass } from "../components/ui/button";
+import { PageHeader, Sheet } from "../components/ui/sheet";
 import { jobAnalysisSchema, scoreBreakdownSchema } from "../lib/analysis";
 import { requireUser } from "../lib/auth.server";
+import { exhibitNumbers } from "../lib/contributions";
 import { matchKeywordsToExperiences } from "../lib/keyword-match";
 import {
   getAnalysis,
@@ -34,6 +37,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 
   const analysis = jobAnalysisSchema.parse(record.analysis);
+  const exhibits = exhibitNumbers(experienceList);
   return {
     record: {
       id: record.id,
@@ -46,6 +50,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     score: scoreBreakdownSchema.parse(record.score),
     keywordMatch: matchKeywordsToExperiences(analysis, experienceList),
     positions: experienceList.map(({ id, position, company }) => ({
+      exhibit: exhibits.get(id) ?? null,
       id,
       position,
       company,
@@ -59,79 +64,77 @@ export default function AnalysisResult({ loaderData }: Route.ComponentProps) {
     loaderData;
 
   return (
-    <main id="main" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <Link to="/" className="text-sm text-exhibit hover:text-exhibit-deep">
-        ← New analysis
-      </Link>
-      <div className="mt-5 grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <FitScore score={score}>
+    <main
+      id="main"
+      className="mx-auto grid max-w-[90rem] gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
+    >
+      <Sheet className="rounded-t-none">
+        <PageHeader
+          back={
+            <Link to="/" className={textLinkClass}>
+              ← Home
+            </Link>
+          }
+          title={record.jobTitle}
+          meta={`${record.companyName || "Company not specified"} · ${analysis.seniority || "Seniority not specified"}`}
+        />
+        <AnalysisSummary
+          analysis={analysis}
+          score={score}
+          keywordMatch={keywordMatch}
+          positions={positions}
+        />
+      </Sheet>
+      <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start lg:pt-6">
+        <FitScore score={score}>
+          <div className="mt-5 border-t border-rule pt-4">
             {record.applicationId ? (
-              <Link
+              <ButtonLink
                 to={`/applications/${record.applicationId}/tailor`}
-                className="mt-6 block rounded-xl bg-exhibit px-4 py-3 text-center font-semibold text-sheet hover:bg-exhibit-deep"
+                variant="primary"
+                className="w-full"
               >
                 Open tailoring
-              </Link>
+              </ButtonLink>
             ) : (
-              <p className="mt-6 text-sm text-ink-2">
-                Read-only. To generate documents, paste this job on the{" "}
-                <Link to="/" className="text-exhibit hover:text-exhibit-deep">
+              <p className="text-sm text-ink-2">
+                Read-only. To write documents, paste this job on the{" "}
+                <Link to="/" className={textLinkClass}>
                   home page
                 </Link>{" "}
                 and save it to an application.
               </p>
             )}
-          </FitScore>
-          {documents.resumes.length || documents.coverLetters.length ? (
-            <nav
-              aria-label="Documents from this analysis"
-              className="rounded-2xl border border-rule bg-sheet p-5 text-sm"
-            >
-              <h2 className="font-semibold">Documents</h2>
-              <ul className="mt-3 space-y-2">
-                {documents.resumes.map((resume) => (
-                  <li key={resume.id}>
-                    <Link
-                      to={`/resumes/${resume.id}`}
-                      className="text-exhibit hover:text-exhibit-deep"
-                    >
-                      Resume: {resume.title}
-                    </Link>
-                  </li>
-                ))}
-                {documents.coverLetters.map((coverLetter) => (
-                  <li key={coverLetter.id}>
-                    <Link
-                      to={`/cover-letters/${coverLetter.id}`}
-                      className="text-exhibit hover:text-exhibit-deep"
-                    >
-                      {coverLetter.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ) : null}
-        </aside>
-
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
-            Analysis
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold">{record.jobTitle}</h1>
-          <p className="mt-2 mb-8 text-ink-2">
-            {record.companyName || "Company not specified"} ·{" "}
-            {analysis.seniority || "Seniority not specified"}
-          </p>
-          <AnalysisSummary
-            analysis={analysis}
-            score={score}
-            keywordMatch={keywordMatch}
-            positions={positions}
-          />
-        </div>
-      </div>
+          </div>
+        </FitScore>
+        {documents.resumes.length || documents.coverLetters.length ? (
+          <nav
+            aria-label="Documents from this analysis"
+            className="rounded-sheet bg-sheet p-5 text-sm shadow-sheet"
+          >
+            <h2 className="font-semibold">Documents</h2>
+            <ul className="mt-3 space-y-2">
+              {documents.resumes.map((resume) => (
+                <li key={resume.id}>
+                  <Link to={`/resumes/${resume.id}`} className={textLinkClass}>
+                    Resume: {resume.title}
+                  </Link>
+                </li>
+              ))}
+              {documents.coverLetters.map((coverLetter) => (
+                <li key={coverLetter.id}>
+                  <Link
+                    to={`/cover-letters/${coverLetter.id}`}
+                    className={textLinkClass}
+                  >
+                    {coverLetter.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
+      </aside>
     </main>
   );
 }

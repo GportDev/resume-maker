@@ -329,7 +329,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U09 — Tailor flow and analysis results
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02
 - Intent: make the analysis read as an explained number and a clear path to generate.
 - Files: `app/routes/application-tailor.tsx`, `app/routes/analysis-result.tsx`, `app/components/analysis-summary.tsx`, `tests/*`
@@ -346,6 +346,16 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: score values and disclaimers unchanged. Generation still all-or-nothing. Unverified matches still excluded and labeled.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`; browser with a seeded analysis at both widths.
+- Evidence (2026-10-21):
+  - Tailor page (`application-tailor.tsx`): one sheet titled "Tailor for <company>". After an analysis, the job description collapses to a summary (word count, analyzed time, "changed since" warning) with "Edit and re-analyze" (`<details>`, opens automatically on an analyze error). Before the first analysis, the form shows inline.
+  - Sticky aside: `FitScore` now renders `FitBreakdown` (segmented ledger bar plus factor list, values unchanged, disclaimer kept), and the write action ("Write resume and cover letter" / "Write new versions"). While generating, `GenerationProgress` shows elapsed seconds, ordered steps (labeled in code as an estimate, not server events), and "Both documents save together, or neither does". Re-submit is disabled while busy.
+  - `analysis-summary.tsx` rewritten as sheet sections: ATS keywords split into "In your evidence" and "Not found", with a pointer to add real evidence (and never unsupported terms); "Matches by position" sorted by matches, with expandable rows instead of a 36rem table; "Evidence matches" with verified/unverified and strength stamps, plus `ExhibitCitation` chips ("Ex. N · position") linking to the source contribution file; "Gaps" with allowlisted learning links.
+  - Exhibit numbers are passed through the tailor and analysis-result loaders. The analysis-result page uses the same sheet and aside layout.
+  - Generation stays all-or-nothing; unverified matches are still labeled and excluded (logic untouched).
+  - `pnpm test` 314 passed; `typecheck`, `check`, `build` pass.
+  - Browser: the seeded Lumen tailor page shows the collapsed description, 8 found / 2 not-found keywords, positions sorted by matches, three evidence matches citing Ex. 5, Ex. 5 + Ex. 4, and Ex. 3, gaps PCI DSS and Adyen, and Fit 78 with a 29/35, 19/25, 18/25, 8/10, 4/5 breakdown; 375px has no horizontal scroll.
+  - Not exercised: a live generation (no AI key in the local environment), so the progress panel was not seen running.
+  - Also found: earlier sandboxed `node scripts/seed-dev.mjs` runs failed silently because local network was blocked. The seed now runs outside the sandbox.
 
 ## U10 — Resume and cover letter editors
 
