@@ -219,6 +219,15 @@ dialog.dialog[open]::backdrop {
   }
 }
 
+/* State that replaces an action fades in where the action was. */
+.fade-in {
+  transition: opacity 200ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
 /* Toasts enter and leave through the same bottom edge. */
 .toast {
   transition-property: opacity, transform;

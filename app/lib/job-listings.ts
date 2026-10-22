@@ -302,3 +302,57 @@ export function formatPostedDate(postedAt: string | null): string | null {
     timeZone: "UTC",
   }).format(date);
 }
+
+const toolsHeadingPattern = /^#{1,6}\s+.*\b(tools|stack|technolog)/i;
+const anyHeadingPattern = /^#{1,6}\s+/;
+const toolsLabelPattern =
+  /^\s*(?:[-*+]\s+)?\*{0,2}(?:tools|stack)\*{0,2}\s*:\s*(.*)$/i;
+
+/**
+ * Collects the tools a user listed in the Tools (or Stack) sections of their
+ * contribution files. Deterministic; no model involved.
+ */
+export function evidenceTools(markdowns: string[]): string[] {
+  const found = new Map<string, string>();
+  const add = (line: string) => {
+    for (const raw of line.split(/[,;•|]/)) {
+      const term = raw
+        .replace(/^\s*(?:[-*+]|\d+\.)\s+/, "")
+        .replace(/[*_`]/g, "")
+        .trim();
+      if (term.length < 2 || term.length > 40) continue;
+      const key = term.toLocaleLowerCase();
+      if (!found.has(key)) found.set(key, term);
+    }
+  };
+  for (const markdown of markdowns) {
+    let inTools = false;
+    for (const line of markdown.split("\n")) {
+      const labeled = toolsLabelPattern.exec(line);
+      if (labeled?.[1]) {
+        add(labeled[1]);
+        continue;
+      }
+      if (anyHeadingPattern.test(line)) {
+        inTools = toolsHeadingPattern.test(line);
+        continue;
+      }
+      if (inTools && line.trim()) add(line);
+    }
+  }
+  return [...found.values()];
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Tools from the user's evidence that a listing's text mentions, in order. */
+export function listingToolOverlap(text: string, tools: string[]): string[] {
+  return tools.filter((tool) =>
+    new RegExp(
+      `(?:^|[^\\p{L}\\p{N}])${escapeRegExp(tool)}(?=$|[^\\p{L}\\p{N}])`,
+      "iu",
+    ).test(text),
+  );
+}

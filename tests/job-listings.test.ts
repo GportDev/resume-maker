@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  evidenceTools,
   formatPostedDate,
   htmlToPlainText,
   type JobListing,
@@ -8,6 +9,7 @@ import {
   linkedInJobUrl,
   linkedInJobUrlOrNull,
   listingToApplicationInput,
+  listingToolOverlap,
   parseJobSearchParams,
   saveListingFormSchema,
 } from "../app/lib/job-listings";
@@ -264,5 +266,46 @@ describe("formatPostedDate", () => {
     expect(formatPostedDate("2026-10-06T23:30:00.000Z")).toBe("Oct 6, 2026");
     expect(formatPostedDate(null)).toBeNull();
     expect(formatPostedDate("nope")).toBeNull();
+  });
+});
+
+describe("evidence tool overlap", () => {
+  const files = [
+    "## Contributions\n- Built payments\n\n## Tools\n\nTypeScript, Node.js, PostgreSQL\n- Kafka\n",
+    "**Tools:** Go, Terraform, typescript",
+    "## Context\nUsed Python daily\n## Stack\nAWS | C++",
+  ];
+
+  it("collects tools from Tools and Stack sections and labels, de-duplicated", () => {
+    expect(evidenceTools(files)).toEqual([
+      "TypeScript",
+      "Node.js",
+      "PostgreSQL",
+      "Kafka",
+      "Go",
+      "Terraform",
+      "AWS",
+      "C++",
+    ]);
+  });
+
+  it("ignores tools mentioned outside a tools section", () => {
+    expect(evidenceTools(files)).not.toContain("Python");
+  });
+
+  it("matches whole terms case-insensitively, including symbols", () => {
+    const tools = evidenceTools(files);
+    expect(
+      listingToolOverlap(
+        "We use typescript, Postgresql and C++. Go-to-market experience helps.",
+        tools,
+      ),
+    ).toEqual(["TypeScript", "PostgreSQL", "Go", "C++"]);
+  });
+
+  it("does not match inside longer words", () => {
+    expect(
+      listingToolOverlap("Google Cloud and Kafkaesque", ["Go", "Kafka"]),
+    ).toEqual([]);
   });
 });

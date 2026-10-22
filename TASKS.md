@@ -389,7 +389,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U11 — Find jobs
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02
 - Intent: triage listings faster without spending extra paid searches.
 - Files: `app/routes/job-search.tsx`, `app/lib/job-listings.ts`, `tests/job-listings.test.ts`
@@ -405,6 +405,14 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: no extra aggregator requests (saving still never re-searches with JS on). Listing HTML still never rendered.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`; browser with a fake provider (`JOB_LISTINGS_BASE_URL`) at both widths.
+- Evidence (2026-10-21):
+  - The search form is a one-row filter bar in the page sheet (title keywords, location, posted window, remote, Search) with a hint that each search is one paid request and saving is not. It is still a GET form.
+  - Results on ≥1024px with JS: a list (title, company, location · arrangement · salary, Saved stamp, "N of your tools") next to a sticky detail pane (title, meta, Save / Save and tailor, tool overlap box, LinkedIn link, plain-text description). Selection is kept in `?listing=` through `history.replaceState`, so there is no loader run and no provider call. On narrow screens or without JS: stacked cards with a `<details>` description and the same actions.
+  - Save state replaces the buttons in place ("On your board · Open card · Tailor", `.fade-in` 200ms). List rows read the same keyed save fetcher, so the Saved stamp updates without revalidating the paid search.
+  - Evidence overlap shipped: pure `evidenceTools` (tools from Tools/Stack headings and "Tools:" labels in your contribution files) and `listingToolOverlap` (whole-term, case-insensitive) in `app/lib/job-listings.ts`, +4 tests. Labeled "A quick text match against your Tools sections, not a fit score". No model or provider call; it reads owner-scoped `listExperiences` only when a search runs.
+  - Pagination: "← Previous" / "Next 25 →" buttons and a "Results 1–6" range.
+  - `pnpm test` 326 passed; `typecheck`, `check`, `build` pass.
+  - Browser with a local fake aggregator (`JOB_LISTINGS_BASE_URL=http://localhost:5199`, synthetic rows, not committed): six results; Lumen listing "Mentions 4 tools: TypeScript, PostgreSQL, Stripe, Kafka"; selecting another listing changed `?listing=` with 0 `.data` fetches; Save sent only the action POST plus an app-layout revalidation (the search loader did not re-run); the row stamp updated to Saved; 375px shows stacked cards with no horizontal scroll.
 
 ## U12 — Profile, AI settings, company, and auth pages
 
