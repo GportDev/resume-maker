@@ -1,0 +1,36 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": ["app/routes/application-detail.tsx"],
+        "createdAt": "2026-10-08T17:18:02.071Z",
+        "reason": "agent: flagged text is text-slate-950 (#020617, near-black) on bg-cyan-400 primary buttons, about 10:1 contrast; existing app-wide button style, not gray-on-color"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": ["app/routes/application-tailor.tsx"],
+        "createdAt": "2026-10-08T17:18:28.447Z",
+        "reason": "agent: flagged text is text-slate-950 (#020617, near-black) on bg-cyan-400 primary buttons, about 10:1 contrast; existing app-wide button style, not gray-on-color"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": ["app/routes/applications-board.tsx"],
+        "createdAt": "2026-10-09T02:00:43.247Z",
+        "reason": "agent: flagged text is text-slate-950 (#020617, near-black) on bg-cyan-400 primary buttons, about 10:1 contrast; existing app-wide button style, not gray-on-color"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": ["app/routes/job-search.tsx"],
+        "createdAt": "2026-10-09T02:00:43.264Z",
+        "reason": "agent: flagged text is text-slate-950 (#020617, near-black) on bg-cyan-400 primary buttons, about 10:1 contrast; existing app-wide button style, not gray-on-color"
+      }
+    ]
+  }
+}
