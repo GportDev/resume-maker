@@ -208,6 +208,17 @@ dialog.dialog[open]::backdrop {
   }
 }
 
+/* Dragged cards lift off the board. */
+.lift {
+  transform: scale(1.02) rotate(-0.6deg);
+  cursor: grabbing;
+  transition: transform 150ms var(--ease-out);
+
+  @starting-style {
+    transform: scale(1);
+  }
+}
+
 /* Toasts enter and leave through the same bottom edge. */
 .toast {
   transition-property: opacity, transform;
@@ -232,6 +243,7 @@ dialog.dialog[open]::backdrop {
   dialog.dialog,
   dialog.dialog[open],
   .pop,
+  .lift,
   .toast,
   .toast[data-leaving] {
     transform: none;

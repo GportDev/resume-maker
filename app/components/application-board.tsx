@@ -4,6 +4,7 @@ import {
   DndContext,
   type DragEndEvent,
   type DragOverEvent,
+  DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
@@ -20,6 +21,15 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  ArrowRight,
+  ChevronsLeftRight,
+  ExternalLink,
+  GripVertical,
+  MoreHorizontal,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import {
@@ -30,8 +40,10 @@ import {
   type BoardColumns,
   type PendingMove,
 } from "../lib/applications";
-import { ApplicationCard } from "./application-card";
-import { ConfirmDialog } from "./ui/confirm-dialog";
+import { ApplicationCard, StatusBadge } from "./application-card";
+import { buttonClass } from "./ui/button";
+import { ConfirmDialog, openDialog } from "./ui/confirm-dialog";
+import { Popover, popoverItemClass } from "./ui/popover";
 
 type ColumnIds = Record<ApplicationStatus, string[]>;
 type ActionResult = { error?: string };
@@ -83,6 +95,9 @@ export function ApplicationBoard({
   onMove: (move: PendingMove) => void;
 }) {
   const [dragIds, setDragIds] = useState<ColumnIds | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [keyboardDrag, setKeyboardDrag] = useState(false);
+  const [closedOpen, setClosedOpen] = useState(false);
   const originRef = useRef<ApplicationStatus | null>(null);
   const ids = dragIds ?? toColumnIds(columns);
   const idsRef = useRef(ids);
@@ -139,7 +154,9 @@ export function ApplicationBoard({
     },
   };
 
-  function handleDragStart({ active }: DragStartEvent) {
+  function handleDragStart({ active, activatorEvent }: DragStartEvent) {
+    setActiveId(String(active.id));
+    setKeyboardDrag(activatorEvent instanceof KeyboardEvent);
     const current = toColumnIds(columns);
     originRef.current = findColumn(current, active.id) ?? null;
     setDragIds(current);
@@ -172,6 +189,7 @@ export function ApplicationBoard({
     const current = idsRef.current;
     const origin = originRef.current;
     setDragIds(null);
+    setActiveId(null);
     originRef.current = null;
     if (!over || !origin) return;
 
@@ -199,7 +217,18 @@ export function ApplicationBoard({
 
   function handleDragCancel() {
     setDragIds(null);
+    setActiveId(null);
   }
+
+  const activeCard = activeId ? cardsById.get(activeId) : undefined;
+  const openStatuses = applicationStatuses.filter(
+    (status) => status !== "rejected" && status !== "withdrawn",
+  );
+  const closedStatuses = ["rejected", "withdrawn"] as const;
+  const closedCount = closedStatuses.reduce(
+    (total, status) => total + ids[status].length,
+    0,
+  );
 
   return (
     <DndContext
@@ -218,8 +247,8 @@ export function ApplicationBoard({
         },
       }}
     >
-      <div className="grid snap-x auto-cols-[minmax(16rem,1fr)] grid-flow-col gap-4 overflow-x-auto pb-4">
-        {applicationStatuses.map((status) => (
+      <div className="flex snap-x gap-3 overflow-x-auto pb-4">
+        {openStatuses.map((status) => (
           <BoardColumn
             key={status}
             status={status}
@@ -229,17 +258,96 @@ export function ApplicationBoard({
             })}
           />
         ))}
+        {closedOpen ? (
+          closedStatuses.map((status) => (
+            <BoardColumn
+              key={status}
+              status={status}
+              onCollapse={
+                status === "rejected" ? () => setClosedOpen(false) : undefined
+              }
+              cards={ids[status].flatMap((id) => {
+                const card = cardsById.get(id);
+                return card ? [{ ...card, status }] : [];
+              })}
+            />
+          ))
+        ) : (
+          <ClosedLane
+            count={closedCount}
+            onExpand={() => setClosedOpen(true)}
+          />
+        )}
       </div>
+      <DragOverlay
+        dropAnimation={
+          keyboardDrag
+            ? null
+            : { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" }
+        }
+      >
+        {activeCard ? (
+          <div
+            className={
+              keyboardDrag
+                ? "rounded-sheet shadow-lifted"
+                : "lift rounded-sheet shadow-lifted"
+            }
+          >
+            <ApplicationCard
+              application={activeCard}
+              showStatus={false}
+              dragHandle={<DragGrip />}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
+  );
+}
+
+function ClosedLane({
+  count,
+  onExpand,
+}: {
+  count: number;
+  onExpand: () => void;
+}) {
+  const rejected = useDroppable({ id: columnDroppableId("rejected") });
+  const isOver = rejected.isOver;
+  return (
+    <section
+      ref={rejected.setNodeRef}
+      aria-label="Closed applications"
+      className={`flex w-14 shrink-0 snap-start flex-col items-center rounded-sheet border py-3 ${
+        isOver
+          ? "border-exhibit bg-exhibit-tint"
+          : "border-rule-strong/40 bg-board-deep/50"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onExpand}
+        aria-label={`Show closed applications (${count})`}
+        className="pressable flex flex-col items-center gap-3 rounded-control px-2 py-1 text-ink-2 hover:text-ink"
+      >
+        <ChevronsLeftRight aria-hidden="true" className="size-4" />
+        <span className="text-sm font-semibold [writing-mode:vertical-rl]">
+          Closed <span className="tabular font-normal text-ink-3">{count}</span>
+        </span>
+      </button>
+    </section>
   );
 }
 
 function BoardColumn({
   status,
   cards,
+  onCollapse,
 }: {
   status: ApplicationStatus;
   cards: ApplicationCardData[];
+  onCollapse?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnDroppableId(status),
@@ -250,39 +358,59 @@ function BoardColumn({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex min-h-[24rem] snap-start flex-col rounded-2xl border border-rule bg-sheet-sunk p-3"
+      className={`flex min-h-[28rem] w-[17.5rem] shrink-0 snap-start flex-col rounded-sheet border p-2 transition-[background-color,border-color] duration-150 ${
+        isOver
+          ? "border-exhibit bg-exhibit-tint/70"
+          : "border-rule-strong/40 bg-board-deep/50"
+      }`}
     >
-      <header className="flex items-center justify-between gap-2 px-1">
-        <h2 id={headingId} className="text-sm font-semibold">
-          {label}{" "}
-          <span className="font-normal text-ink-3">({cards.length})</span>
+      <header className="flex items-center gap-2 px-1.5 pt-0.5 pb-2">
+        <h2 id={headingId} className="flex-1">
+          <StatusBadge status={status} />{" "}
+          <span className="tabular ml-1 text-sm font-normal text-ink-3">
+            {cards.length}
+          </span>
         </h2>
+        {onCollapse ? (
+          <button
+            type="button"
+            onClick={onCollapse}
+            aria-label="Hide closed applications"
+            className={buttonClass({ variant: "ghost", size: "sm" })}
+          >
+            <ChevronsLeftRight aria-hidden="true" className="size-4" />
+          </button>
+        ) : null}
         <Link
           to={`/applications/new?status=${status}`}
           aria-label={`Add application to ${label}`}
-          className="rounded-md px-2 py-1 text-xs text-exhibit hover:bg-sheet-sunk hover:text-exhibit-deep"
+          title={`Add to ${label}`}
+          className={buttonClass({ variant: "ghost", size: "sm" })}
         >
-          + Add
+          +
         </Link>
       </header>
       <SortableContext items={cards} strategy={verticalListSortingStrategy}>
-        <ol
-          ref={setNodeRef}
-          className={`mt-3 flex flex-1 flex-col gap-2 rounded-xl p-0.5 ${
-            isOver ? "bg-exhibit-tint" : ""
-          }`}
-        >
+        <ol ref={setNodeRef} className="flex flex-1 flex-col gap-2">
           {cards.map((card) => (
             <SortableApplication key={card.id} application={card} />
           ))}
           {cards.length === 0 ? (
-            <li className="rounded-xl border border-dashed border-rule p-4 text-center text-xs text-ink-3">
-              No applications in {label.toLowerCase()}.
+            <li className="rounded-sheet border border-dashed border-rule-strong/60 p-4 text-center text-[0.8125rem] text-ink-3">
+              Drop a card here
             </li>
           ) : null}
         </ol>
       </SortableContext>
     </section>
+  );
+}
+
+function DragGrip() {
+  return (
+    <span className="grid size-7 place-items-center rounded-[4px] text-ink-3">
+      <GripVertical aria-hidden="true" className="size-4" />
+    </span>
   );
 }
 
@@ -306,10 +434,15 @@ function SortableApplication({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={isDragging ? "relative z-10 opacity-60" : undefined}
+      className={
+        isDragging
+          ? "rounded-sheet border border-dashed border-exhibit/60 bg-exhibit-tint/40 [&>*]:invisible"
+          : undefined
+      }
     >
       <ApplicationCard
         application={application}
+        showStatus={false}
         dragHandle={
           <button
             type="button"
@@ -317,69 +450,136 @@ function SortableApplication({
             {...attributes}
             {...listeners}
             aria-label={`Drag ${label}`}
-            className="cursor-grab touch-none rounded-md px-1.5 py-1 text-ink-3 hover:bg-sheet-sunk hover:text-ink active:cursor-grabbing"
+            className="grid size-7 cursor-grab touch-none place-items-center rounded-[4px] text-ink-3 hover:bg-sheet-sunk hover:text-ink active:cursor-grabbing"
           >
-            <span aria-hidden="true">⠿</span>
+            <GripVertical aria-hidden="true" className="size-4" />
           </button>
         }
-        actions={<CardActions application={application} />}
+        menu={<CardMenu application={application} />}
+        actions={<CardFallback application={application} />}
       />
     </li>
   );
 }
 
-function CardActions({ application }: { application: ApplicationCardData }) {
+function CardMenu({ application }: { application: ApplicationCardData }) {
   const moveFetcher = useFetcher<ActionResult>({
     key: moveFetcherKey(application.id),
   });
   const label = cardLabel(application);
-  const selectId = `status-${application.id}`;
-  const error = moveFetcher.data?.error;
+  const menuId = `card-menu-${application.id}`;
+  const deleteDialogId = `delete-${application.id}`;
+  function moveTo(status: ApplicationStatus) {
+    document.getElementById(menuId)?.hidePopover();
+    moveFetcher.submit(
+      { intent: "move", id: application.id, status },
+      { method: "post" },
+    );
+  }
 
   return (
-    <div className="space-y-2">
-      <moveFetcher.Form method="post" className="flex items-center gap-1.5">
-        <input type="hidden" name="intent" value="move" />
-        <input type="hidden" name="id" value={application.id} />
-        <label htmlFor={selectId} className="sr-only">
-          Status for {label}
-        </label>
-        <select
-          id={selectId}
-          name="status"
-          key={application.status}
-          defaultValue={application.status}
-          className="min-w-0 flex-1 rounded-md border border-rule-strong bg-field px-2 py-1 text-xs"
+    <>
+      <Popover
+        id={menuId}
+        align="end"
+        triggerLabel={`Actions for ${label}`}
+        triggerClassName="grid size-7 place-items-center rounded-[4px] text-ink-3 hover:bg-sheet-sunk hover:text-ink"
+        trigger={<MoreHorizontal aria-hidden="true" className="size-4" />}
+      >
+        <Link
+          to={`/applications/${application.id}`}
+          className={popoverItemClass}
         >
-          {applicationStatuses.map((status) => (
-            <option key={status} value={status}>
+          <ExternalLink aria-hidden="true" className="size-4 text-ink-3" />
+          Open
+        </Link>
+        <Link
+          to={`/applications/${application.id}/tailor`}
+          className={popoverItemClass}
+        >
+          <Sparkles aria-hidden="true" className="size-4 text-ink-3" />
+          Tailor
+        </Link>
+        <p className="mt-1.5 border-t border-rule px-2.5 pt-2 pb-1 text-[0.75rem] font-medium text-ink-3">
+          Move to
+        </p>
+        {applicationStatuses
+          .filter((status) => status !== application.status)
+          .map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => moveTo(status)}
+              className={popoverItemClass}
+            >
+              <ArrowRight aria-hidden="true" className="size-4 text-ink-3" />
               {applicationStatusLabels[status]}
-            </option>
+            </button>
           ))}
-        </select>
         <button
-          type="submit"
-          aria-label={`Move ${label}`}
-          className="rounded-md border border-rule-strong px-2 py-1 text-xs hover:border-exhibit"
+          type="button"
+          onClick={() => openDialog(deleteDialogId)}
+          className={`${popoverItemClass} mt-1.5 border-t border-rule text-danger`}
         >
-          Move
+          <Trash2 aria-hidden="true" className="size-4" />
+          Delete
         </button>
-      </moveFetcher.Form>
+      </Popover>
       <ConfirmDialog
+        dialogId={deleteDialogId}
+        hideTrigger
         triggerLabel="Delete"
-        triggerVariant="ghost"
-        triggerClassName="text-ink-3 hover:text-danger"
         title={`Delete ${label}?`}
         description="The application, its notes, and links to its tailored documents are removed permanently."
         confirmLabel="Delete application"
         fields={{ intent: "delete", id: application.id }}
         fetcherKey={deleteFetcherKey(application.id)}
       />
+    </>
+  );
+}
+
+function CardFallback({ application }: { application: ApplicationCardData }) {
+  const moveFetcher = useFetcher<ActionResult>({
+    key: moveFetcherKey(application.id),
+  });
+  const label = cardLabel(application);
+  const selectId = `status-${application.id}`;
+  const error = moveFetcher.data?.error;
+  return (
+    <>
+      <noscript>
+        <form method="post" className="mt-2 flex items-center gap-1.5">
+          <input type="hidden" name="intent" value="move" />
+          <input type="hidden" name="id" value={application.id} />
+          <label htmlFor={selectId} className="sr-only">
+            Status for {label}
+          </label>
+          <select
+            id={selectId}
+            name="status"
+            defaultValue={application.status}
+            className="min-w-0 flex-1 rounded-[4px] border border-rule-strong bg-field px-2 py-1 text-xs"
+          >
+            {applicationStatuses.map((status) => (
+              <option key={status} value={status}>
+                {applicationStatusLabels[status]}
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="rounded-[4px] border border-rule-strong px-2 py-1 text-xs"
+          >
+            Move
+          </button>
+        </form>
+      </noscript>
       {error ? (
-        <p role="alert" className="text-xs text-danger">
+        <p role="alert" className="mt-1 text-xs text-danger">
           {error}
         </p>
       ) : null}
-    </div>
+    </>
   );
 }

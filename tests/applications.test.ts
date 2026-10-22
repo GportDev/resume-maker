@@ -5,6 +5,7 @@ import {
   applicationInputSchema,
   applyPendingMove,
   computeSortOrder,
+  filterApplications,
   formatSalaryRange,
   groupApplicationsByStatus,
   needsRebalance,
@@ -424,5 +425,43 @@ describe("summarizePipeline", () => {
     const summary = summarizePipeline([], new Map());
     expect(summary.active).toBe(0);
     expect(summary.needsTailoring).toEqual([]);
+  });
+});
+
+describe("filterApplications", () => {
+  const cards = [
+    {
+      id: "1",
+      companyName: "Lumen Bank",
+      position: "Backend Engineer",
+      location: "Lisbon",
+    },
+    {
+      id: "2",
+      companyName: "Orbital Maps",
+      position: "Staff Engineer",
+      location: "Berlin",
+    },
+  ];
+
+  it("returns every card for an empty or blank query", () => {
+    expect(filterApplications(cards, "  ")).toBe(cards);
+  });
+
+  it("matches company, position, or location case-insensitively", () => {
+    expect(filterApplications(cards, "lumen").map((card) => card.id)).toEqual([
+      "1",
+    ]);
+    expect(filterApplications(cards, "STAFF").map((card) => card.id)).toEqual([
+      "2",
+    ]);
+    expect(filterApplications(cards, "berl").map((card) => card.id)).toEqual([
+      "2",
+    ]);
+    expect(filterApplications(cards, "engineer")).toHaveLength(2);
+  });
+
+  it("returns nothing when no field matches", () => {
+    expect(filterApplications(cards, "Tokyo")).toEqual([]);
   });
 });

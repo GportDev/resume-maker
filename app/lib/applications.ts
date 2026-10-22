@@ -377,3 +377,16 @@ export function summarizePipeline(
   const active = applications.length - counts.rejected - counts.withdrawn;
   return { counts, active, needsTailoring };
 }
+
+/** Case-insensitive match on company, position, or location, like the board filter. */
+export function filterApplications<
+  Card extends { companyName: string; position: string; location: string },
+>(cards: Card[], query: string): Card[] {
+  const needle = query.trim().toLocaleLowerCase();
+  if (!needle) return cards;
+  return cards.filter((card) =>
+    [card.companyName, card.position, card.location].some((value) =>
+      value.toLocaleLowerCase().includes(needle),
+    ),
+  );
+}

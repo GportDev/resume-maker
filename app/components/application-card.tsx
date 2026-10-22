@@ -143,13 +143,17 @@ function DocumentLinks({ application }: { application: ApplicationCardData }) {
 export function ApplicationCard({
   application,
   dragHandle,
+  menu,
   badges,
   actions,
+  showStatus = true,
 }: {
   application: ApplicationCardData;
   dragHandle?: ReactNode;
+  menu?: ReactNode;
   badges?: ReactNode;
   actions?: ReactNode;
+  showStatus?: boolean;
 }) {
   const salary = formatSalaryRange(
     application.salaryMin,
@@ -157,52 +161,54 @@ export function ApplicationCard({
     application.salaryCurrency,
     application.salaryPeriod,
   );
+  const meta = [application.location, salary].filter(Boolean);
+  const hasBadges =
+    showStatus ||
+    application.source === "linkedin" ||
+    application.documents?.fitScore != null ||
+    Boolean(application.documents?.match) ||
+    Boolean(badges);
 
   return (
-    <article className="rounded-xl border border-rule bg-sheet p-3 shadow-sm">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
+    <article className="rounded-sheet bg-sheet p-3 shadow-sheet">
+      <div className="flex items-start gap-1">
+        <div className="min-w-0 flex-1 pt-0.5">
           <h3 className="text-sm font-semibold leading-5">
             <Link
               to={`/applications/${application.id}`}
-              className="hover:text-exhibit-deep"
+              className="hover:text-exhibit"
             >
               {application.position}
             </Link>
           </h3>
-          <p className="truncate text-sm text-ink-2">
+          <p className="truncate text-[0.8125rem] text-ink-2">
             {application.companyName}
           </p>
         </div>
+        {menu}
         {dragHandle}
       </div>
-      <dl className="mt-2 space-y-0.5 text-xs text-ink-2">
-        {application.location ? (
-          <div className="flex gap-1">
-            <dt className="sr-only">Location</dt>
-            <dd className="truncate">{application.location}</dd>
-          </div>
-        ) : null}
-        {salary ? (
-          <div className="flex gap-1">
-            <dt className="sr-only">Salary range</dt>
-            <dd>{salary}</dd>
-          </div>
-        ) : null}
-      </dl>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <StatusBadge status={application.status} />
-        {application.source === "linkedin" ? <LinkedInBadge /> : null}
-        {application.documents?.fitScore != null ? (
-          <FitBadge score={application.documents.fitScore} />
-        ) : null}
-        {application.documents?.match ? (
-          <MatchBadge match={application.documents.match} />
-        ) : null}
-        {badges}
-      </div>
+      {meta.length ? (
+        <p className="tabular mt-1.5 truncate text-xs text-ink-3">
+          <span className="sr-only">Location and salary: </span>
+          {meta.join(" · ")}
+        </p>
+      ) : null}
+      {hasBadges ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {showStatus ? <StatusBadge status={application.status} /> : null}
+          {application.documents?.match ? (
+            <MatchBadge match={application.documents.match} />
+          ) : null}
+          {application.documents?.fitScore != null ? (
+            <FitBadge score={application.documents.fitScore} />
+          ) : null}
+          {application.source === "linkedin" ? <LinkedInBadge /> : null}
+          {badges}
+        </div>
+      ) : null}
       <DocumentLinks application={application} />
-      {actions ? <div className="mt-3">{actions}</div> : null}
+      {actions}
     </article>
   );
 }

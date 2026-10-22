@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   data,
   Form,
@@ -16,6 +16,7 @@ import { fieldClass } from "../components/ui/field";
 import {
   type ApplicationCardData,
   applyPendingMove,
+  filterApplications,
   groupApplicationsByStatus,
   type PendingMove,
   parseMoveFormData,
@@ -42,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     .trim()
     .slice(0, maxQueryLength);
   const [rows, summaries] = await Promise.all([
-    listApplications(user.id, { q }),
+    listApplications(user.id),
     listApplicationDocumentSummaries(user.id),
   ]);
   const applications: ApplicationCardData[] = rows.map((row) => ({
@@ -137,13 +138,31 @@ export default function ApplicationsBoard({
   const navigation = useNavigation();
   const { moves, deletedIds } = usePendingBoardChanges();
 
+  const [query, setQuery] = useState(q);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  useEffect(() => setQuery(q), [q]);
+  const filtered = useMemo(
+    () => filterApplications(applications, query),
+    [applications, query],
+  );
+
+  function onQueryChange(value: string) {
+    setQuery(value);
+    // Keep the filter in the URL without re-running the loader.
+    const url = new URL(window.location.href);
+    if (value.trim()) url.searchParams.set("q", value);
+    else url.searchParams.delete("q");
+    window.history.replaceState(window.history.state, "", url);
+  }
+
   const columns = useMemo(() => {
-    const visible = applications.filter((card) => !deletedIds.has(card.id));
+    const visible = filtered.filter((card) => !deletedIds.has(card.id));
     return moves.reduce(
       (current, move) => applyPendingMove(current, move),
       groupApplicationsByStatus(visible),
     );
-  }, [applications, moves, deletedIds]);
+  }, [filtered, moves, deletedIds]);
 
   function handleMove(move: PendingMove) {
     const formData = new FormData();
@@ -183,19 +202,27 @@ export default function ApplicationsBoard({
               id="application-filter"
               type="search"
               name="q"
-              defaultValue={q}
-              key={q}
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
               maxLength={maxQueryLength}
               placeholder="Filter by company, role, location"
               className={`${fieldClass} w-64 py-1.5`}
             />
-            <Button type="submit" pending={searching}>
-              Filter
-            </Button>
-            {q ? (
-              <ButtonLink to="/applications" variant="ghost">
-                Clear
-              </ButtonLink>
+            {hydrated ? null : (
+              <Button type="submit" pending={searching}>
+                Filter
+              </Button>
+            )}
+            {query.trim() ? (
+              hydrated ? (
+                <Button variant="ghost" onClick={() => onQueryChange("")}>
+                  Clear
+                </Button>
+              ) : (
+                <ButtonLink to="/applications" variant="ghost">
+                  Clear
+                </ButtonLink>
+              )
             ) : null}
           </Form>
           <ButtonLink to="/jobs">Find jobs</ButtonLink>
@@ -206,11 +233,20 @@ export default function ApplicationsBoard({
       </header>
 
       <div className="mt-8">
-        {applications.length === 0 ? (
-          q ? (
+        {filtered.length === 0 ? (
+          query.trim() ? (
             <div className="rounded-sheet border border-dashed border-rule-strong bg-sheet/60 p-10 text-center">
-              <p className="font-medium">No applications match “{q}”.</p>
-              <ButtonLink to="/applications" className="mt-4">
+              <p className="font-medium">
+                No applications match “{query.trim()}”.
+              </p>
+              <ButtonLink
+                to="/applications"
+                className="mt-4"
+                onClick={(event) => {
+                  event.preventDefault();
+                  onQueryChange("");
+                }}
+              >
                 Clear filter
               </ButtonLink>
             </div>
@@ -232,9 +268,10 @@ export default function ApplicationsBoard({
           )
         ) : (
           <>
-            {q ? (
+            {query.trim() ? (
               <p className="mb-3 text-sm text-ink-2" role="status">
-                Showing {applications.length} matching “{q}”.
+                Showing {filtered.length} of {applications.length} matching “
+                {query.trim()}”.
               </p>
             ) : null}
             <ApplicationBoard columns={columns} onMove={handleMove} />

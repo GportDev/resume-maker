@@ -271,7 +271,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U07 — Applications board
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02
 - Intent: cards you scan, not forms you read.
 - Files: `app/routes/applications-board.tsx`, `app/components/application-board.tsx`, `app/components/application-card.tsx`, `tests/applications.test.ts`
@@ -289,6 +289,14 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: drag (pointer and keyboard), screen-reader announcements, optimistic moves, and no-JS status change all still work. A pure filter function is unit-tested.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`; browser: drag with mouse, drag with keyboard, filter, delete, no-JS move at both widths.
+- Evidence (2026-10-21):
+  - Cards (`application-card.tsx`): sheet-paper cards showing position, company, one meta line (location · salary), match stamp, fit, LinkedIn stamp, and document links. No status stamp inside columns (`showStatus={false}`). The "⋯" menu (`CardMenu`) holds Open, Tailor, Move to <each other status>, and Delete (ConfirmDialog through `openDialog`, keyed delete fetcher, optimistic hide). Without JS, a `<noscript>` status form remains (`CardFallback`).
+  - Drag: `DragOverlay` renders a lifted copy (`.lift`: scale 1.02, slight tilt, `shadow-lifted`, 150ms ease-out). The source slot becomes a dashed placeholder. Pointer drops settle over 200ms `cubic-bezier(0.23,1,0.32,1)`; keyboard drags skip both the lift and the drop animation. Column under the pointer gets an exhibit outline and tint.
+  - Rejected and Withdrawn collapse into a narrow "Closed" lane (count, droppable). Clicking expands both columns, with a collapse control.
+  - Filter: the loader now returns all applications; new pure `filterApplications` (+3 tests) filters as you type, and the URL `q` updates with `history.replaceState`, so the loader does not re-run. SSR applies the same filter, so the GET form still works without JS (the Filter button shows only before hydration).
+  - Column headers use status stamps with counts; empty columns read "Drop a card here".
+  - `pnpm test` 314 passed; `typecheck`, `check`, `build` pass.
+  - Browser (1024 wide): typing "lumen" left 1 card and set `?q=lumen`, clearing restored 5; a pointer drag moved Orbital Maps to Interviewing; the card menu "Move to Saved" moved it back and closed the menu; keyboard Space/ArrowRight/Space moved Tidewater to Applied with the announcement "moved to Applied column, position 1 of 2"; the Closed lane expanded to show Rejected 1 and Withdrawn 1.
 
 ## U08 — Application detail
 
