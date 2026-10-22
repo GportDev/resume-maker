@@ -1,3 +1,4 @@
+import { Plus, Settings2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import {
   Link,
@@ -5,8 +6,10 @@ import {
   Outlet,
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
+import { ButtonLink } from "../components/ui/button";
 import { requireUser } from "../lib/auth.server";
 import {
+  exhibitNumbers,
   formatRoleDates,
   groupExperiencesByCompany,
 } from "../lib/contributions";
@@ -23,6 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     listCompanies(user.id),
     listExperiences(user.id),
   ]);
+  const exhibits = exhibitNumbers(experienceList);
   const folders = groupExperiencesByCompany(experienceList, companyList).map(
     (folder) => ({
       id: folder.company.id,
@@ -32,6 +36,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         id: position.id,
         position: position.position,
         dates: formatRoleDates(position),
+        exhibit: exhibits.get(position.id) ?? null,
       })),
     }),
   );
@@ -67,11 +72,14 @@ function moveTreeFocus(event: KeyboardEvent<HTMLElement>) {
 }
 
 const fileLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `block rounded-lg px-3 py-2 text-sm ${
+  `group/file flex items-start gap-2 rounded-[4px] px-2 py-1.5 text-sm ${
     isActive
-      ? "bg-sheet-sunk text-exhibit-deep"
-      : "text-ink-2 hover:bg-sheet-sunk hover:text-ink"
+      ? "bg-sheet text-ink shadow-sheet"
+      : "text-ink-2 hover:bg-sheet/60 hover:text-ink"
   }`;
+
+const folderActionClass =
+  "grid size-7 place-items-center rounded-[4px] text-ink-3 hover:bg-sheet hover:text-ink [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/folder:opacity-100 [@media(hover:hover)]:group-focus-within/folder:opacity-100";
 
 export default function Contributions({ loaderData }: Route.ComponentProps) {
   const { folders } = loaderData;
@@ -79,54 +87,66 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
   return (
     <main
       id="main"
-      className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[18rem_minmax(0,1fr)]"
+      className="mx-auto grid max-w-[90rem] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[17rem_minmax(0,1fr)]"
     >
-      <aside className="space-y-4">
+      <aside className="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
-            Evidence library
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold">Contributions</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to="/contributions/new"
-            className="rounded-lg bg-exhibit px-3 py-2 text-sm font-semibold text-sheet hover:bg-exhibit-deep"
-          >
-            New position
-          </Link>
-          <Link
-            to="/contributions/companies/new"
-            className="rounded-lg border border-rule-strong px-3 py-2 text-sm hover:border-exhibit"
-          >
-            New company
-          </Link>
+          <h1 className="text-lg font-bold tracking-[-0.01em]">
+            Contributions
+          </h1>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <ButtonLink to="/contributions/new" variant="primary" size="sm">
+              <Plus aria-hidden="true" className="size-4" />
+              New position
+            </ButtonLink>
+            <ButtonLink
+              to="/contributions/companies/new"
+              variant="secondary"
+              size="sm"
+            >
+              New company
+            </ButtonLink>
+          </div>
         </div>
 
         {folders.length ? (
           <nav
             aria-label="Contribution files"
             onKeyDown={moveTreeFocus}
-            className="space-y-2"
+            className="space-y-3"
           >
             {folders.map((folder) => (
-              <details
-                key={folder.id}
-                open
-                className="rounded-xl border border-rule bg-sheet-sunk p-2"
-              >
+              <details key={folder.id} open className="group/folder">
                 <summary
                   data-tree-item
-                  className="cursor-pointer rounded-lg px-2 py-1.5 text-sm font-semibold"
+                  className="flex cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-[0.8125rem] font-semibold text-ink"
                 >
-                  {folder.name}
-                  {folder.hasCurrentRole ? (
-                    <span className="ml-2 rounded bg-ok-tint px-1.5 py-0.5 text-xs font-normal text-ok">
-                      Current
-                    </span>
-                  ) : null}
+                  <span className="min-w-0 flex-1 truncate">{folder.name}</span>
+                  <span className="tabular text-xs font-normal text-ink-3">
+                    {folder.positions.length}
+                  </span>
+                  <Link
+                    data-tree-item
+                    to={`/contributions/new?companyId=${folder.id}`}
+                    aria-label={`New position at ${folder.name}`}
+                    title="New position here"
+                    className={folderActionClass}
+                  >
+                    <Plus aria-hidden="true" className="size-3.5" />
+                  </Link>
+                  <NavLink
+                    data-tree-item
+                    to={`/contributions/companies/${folder.id}`}
+                    aria-label={`Company settings for ${folder.name}`}
+                    title="Company settings"
+                    className={({ isActive }) =>
+                      `${folderActionClass} ${isActive ? "bg-sheet text-ink opacity-100" : ""}`
+                    }
+                  >
+                    <Settings2 aria-hidden="true" className="size-3.5" />
+                  </NavLink>
                 </summary>
-                <ul className="mt-1 space-y-1">
+                <ul className="mt-0.5 space-y-0.5 border-l border-rule-strong/40 pl-1.5 ml-2">
                   {folder.positions.map((position) => (
                     <li key={position.id}>
                       <NavLink
@@ -134,55 +154,42 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
                         to={`/contributions/${position.id}`}
                         className={fileLinkClass}
                       >
-                        <span className="block font-medium">
-                          {position.position}
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium leading-snug">
+                            {position.position}
+                          </span>
+                          <span className="tabular block text-xs text-ink-3">
+                            {position.dates}
+                          </span>
                         </span>
-                        <span className="block text-xs text-ink-3">
-                          {position.dates}
-                        </span>
+                        {position.exhibit ? (
+                          <span className="mt-0.5 shrink-0 rounded-stamp bg-manila-tint px-1 py-px text-[0.625rem] font-bold tracking-[0.06em] text-manila-ink uppercase">
+                            Ex. {position.exhibit}
+                          </span>
+                        ) : null}
                       </NavLink>
                     </li>
                   ))}
                   {folder.positions.length === 0 ? (
-                    <li className="px-3 py-2 text-xs text-ink-3">
+                    <li className="px-2 py-1.5 text-xs text-ink-3">
                       No positions yet.
                     </li>
                   ) : null}
                 </ul>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 px-3 pb-1 text-xs">
-                  <Link
-                    data-tree-item
-                    to={`/contributions/new?companyId=${folder.id}`}
-                    className="text-exhibit hover:text-exhibit-deep"
-                  >
-                    New position here
-                  </Link>
-                  <NavLink
-                    data-tree-item
-                    to={`/contributions/companies/${folder.id}`}
-                    className={({ isActive }) =>
-                      isActive
-                        ? "text-exhibit-deep"
-                        : "text-ink-2 hover:text-ink"
-                    }
-                  >
-                    Company settings
-                  </NavLink>
-                </div>
               </details>
             ))}
           </nav>
         ) : (
-          <div className="rounded-xl border border-dashed border-rule-strong p-5 text-sm">
+          <div className="rounded-sheet border border-dashed border-rule-strong p-4 text-sm">
             <p className="font-medium">No companies yet.</p>
-            <p className="mt-2 text-ink-3">
+            <p className="mt-1 text-ink-3">
               Add a company, then write one contribution file per position you
               held there.
             </p>
           </div>
         )}
         {folders.length ? (
-          <p className="text-xs text-ink-3">
+          <p className="px-2 text-xs text-ink-3">
             Arrow keys, Home, and End move between files.
           </p>
         ) : null}

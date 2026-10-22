@@ -141,3 +141,22 @@ export function markdownFileName(company: string, position: string): string {
     .replace(/^-|-$/g, "");
   return `${slug || "experience"}.md`;
 }
+
+/**
+ * Exhibit numbers are chronological: the earliest position is Ex. 1. Ties on
+ * start date fall back to the record ID so numbering is stable.
+ */
+export function exhibitNumbers(
+  experienceList: { id: string; startDate: string }[],
+): Map<string, number> {
+  const ordered = [...experienceList].sort((left, right) =>
+    left.startDate === right.startDate
+      ? left.id.localeCompare(right.id)
+      : left.startDate < right.startDate
+        ? -1
+        : 1,
+  );
+  return new Map(
+    ordered.map((experience, index) => [experience.id, index + 1]),
+  );
+}

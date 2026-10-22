@@ -52,6 +52,7 @@ export function MarkdownEditor({
   describedBy,
   invalid,
   status,
+  footerExtra,
   onSaveShortcut,
 }: {
   id: string;
@@ -63,6 +64,7 @@ export function MarkdownEditor({
   describedBy?: string;
   invalid?: boolean;
   status?: ReactNode;
+  footerExtra?: ReactNode;
   onSaveShortcut?: () => void;
 }) {
   const [hydrated, setHydrated] = useState(false);
@@ -179,7 +181,8 @@ export function MarkdownEditor({
             Insert starter template
           </button>
         ) : null}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          {footerExtra}
           <Popover
             id={`${id}-shortcuts`}
             align="end"

@@ -1,5 +1,9 @@
-import { data, Form, Link, redirect, useNavigation } from "react-router";
+import { data, Form, redirect, useNavigation } from "react-router";
 import { z } from "zod";
+import { Button, ButtonLink } from "../components/ui/button";
+import { ConfirmDialog } from "../components/ui/confirm-dialog";
+import { describedBy, Field, fieldClass } from "../components/ui/field";
+import { useToast } from "../components/ui/toast";
 import { requireUser } from "../lib/auth.server";
 import {
   countCompanyExperiences,
@@ -132,117 +136,92 @@ export default function ContributionCompany({
     },
   ];
 
+  useToast(saved ? "Company saved." : null, actionData);
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border border-rule bg-sheet p-6">
-        <h2 className="text-xl font-semibold">
-          {company ? `Edit ${company.name}` : "New company"}
-        </h2>
-        <Form
-          key={company?.id ?? "new"}
-          method="post"
-          className="mt-6 grid gap-5 sm:grid-cols-2"
-        >
-          {fields.map((field) => (
-            <div
-              key={field.name}
-              className={field.name === "name" ? "sm:col-span-2" : undefined}
-            >
-              <label
-                htmlFor={`company-${field.name}`}
-                className="block text-sm font-medium"
-              >
-                {field.label}
-              </label>
-              <input
-                id={`company-${field.name}`}
-                name={field.name}
-                type={field.type ?? "text"}
-                defaultValue={field.value}
-                required={field.name === "name"}
-                aria-invalid={errors[field.name] ? true : undefined}
-                aria-describedby={
-                  errors[field.name] ? `company-${field.name}-error` : undefined
-                }
-                className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
-              />
-              {errors[field.name] ? (
-                <p
-                  id={`company-${field.name}-error`}
-                  className="mt-1 text-xs text-danger"
-                >
-                  {errors[field.name]}
-                </p>
-              ) : null}
-            </div>
-          ))}
-          <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-            <button
-              type="submit"
-              name="intent"
-              value="save"
-              disabled={isSaving}
-              className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
-            >
-              {isSaving
-                ? "Saving…"
-                : company
-                  ? "Save company"
-                  : "Create company"}
-            </button>
-            {company ? (
-              <Link
-                to={`/contributions/new?companyId=${company.id}`}
-                className="rounded-xl border border-rule-strong px-4 py-3 hover:border-exhibit"
-              >
-                New position at {company.name}
-              </Link>
-            ) : null}
-            <span role="status" className="text-sm text-ok">
-              {saved ? "Company saved." : ""}
-            </span>
-          </div>
-        </Form>
-      </section>
+    <section className="rounded-sheet bg-sheet p-6 shadow-sheet sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-rule pb-5">
+        <div>
+          <h2 className="text-[1.375rem] font-bold tracking-[-0.01em]">
+            {company ? company.name : "New company"}
+          </h2>
+          <p className="mt-1 text-sm text-ink-2">
+            {company
+              ? `${positionCount} ${positionCount === 1 ? "position" : "positions"} filed under this company.`
+              : "Positions are grouped under their company."}
+          </p>
+        </div>
+        {company ? (
+          <ButtonLink to={`/contributions/new?companyId=${company.id}`}>
+            New position here
+          </ButtonLink>
+        ) : null}
+      </div>
+      <Form
+        key={company?.id ?? "new"}
+        method="post"
+        className="mt-6 grid max-w-2xl gap-5 sm:grid-cols-2"
+      >
+        {fields.map((field) => (
+          <Field
+            key={field.name}
+            id={`company-${field.name}`}
+            label={field.label}
+            error={errors[field.name]}
+            className={field.name === "name" ? "sm:col-span-2" : undefined}
+          >
+            <input
+              id={`company-${field.name}`}
+              name={field.name}
+              type={field.type ?? "text"}
+              defaultValue={field.value}
+              required={field.name === "name"}
+              aria-invalid={errors[field.name] ? true : undefined}
+              aria-describedby={describedBy(
+                `company-${field.name}`,
+                errors[field.name],
+              )}
+              className={fieldClass}
+            />
+          </Field>
+        ))}
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <Button
+            type="submit"
+            name="intent"
+            value="save"
+            variant="primary"
+            pending={isSaving}
+          >
+            {company ? "Save company" : "Create company"}
+          </Button>
+        </div>
+      </Form>
 
       {company ? (
-        <section className="rounded-2xl border border-danger/30 bg-sheet p-6">
-          <h2 className="text-lg font-semibold">Delete company</h2>
+        <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-rule pt-5">
           {positionCount > 0 ? (
-            <p className="mt-2 text-sm text-ink-2">
-              This company has {positionCount}{" "}
-              {positionCount === 1 ? "position" : "positions"}. Delete or move
-              them to another company before deleting it.
+            <p className="text-sm text-ink-3">
+              To delete this company, first delete or move its{" "}
+              {positionCount === 1 ? "position" : `${positionCount} positions`}.
             </p>
           ) : (
-            <Form method="post" className="mt-3 space-y-3">
-              <label className="flex items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  name="confirm"
-                  value="yes"
-                  required
-                  className="size-4 accent-danger"
-                />
-                I understand this permanently deletes {company.name}.
-              </label>
-              <button
-                type="submit"
-                name="intent"
-                value="delete"
-                className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger hover:border-danger"
-              >
-                Delete company
-              </button>
-            </Form>
+            <ConfirmDialog
+              triggerLabel="Delete company"
+              title={`Delete ${company.name}?`}
+              description="The company has no positions. Deleting it cannot be undone."
+              confirmLabel="Delete company"
+              fields={{ intent: "delete" }}
+              error={errors.delete}
+            />
           )}
-          {errors.delete ? (
-            <p role="alert" className="mt-3 text-sm text-danger">
+          {errors.delete && positionCount > 0 ? (
+            <p role="alert" className="text-sm text-danger">
               {errors.delete}
             </p>
           ) : null}
-        </section>
+        </div>
       ) : null}
-    </div>
+    </section>
   );
 }

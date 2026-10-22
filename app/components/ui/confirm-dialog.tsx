@@ -16,7 +16,17 @@ type ConfirmDialogProps = {
   fetcherKey?: string;
   action?: string;
   error?: string;
+  /** Lets another control (a menu item) open the dialog with `openDialog`. */
+  dialogId?: string;
+  /** After hydration, render only the dialog; the opener lives elsewhere. */
+  hideTrigger?: boolean;
 };
+
+/** Opens a ConfirmDialog rendered with `dialogId` from anywhere. */
+export function openDialog(id: string) {
+  const dialog = document.getElementById(id);
+  if (dialog instanceof HTMLDialogElement) dialog.showModal();
+}
 
 /**
  * Destructive confirmation on a native <dialog>. Before hydration (or without
@@ -92,6 +102,8 @@ function HydratedConfirm({
   fetcherKey,
   action,
   error,
+  dialogId,
+  hideTrigger = false,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -135,16 +147,19 @@ function HydratedConfirm({
 
   return (
     <>
-      <Button
-        ref={triggerRef}
-        variant={triggerVariant}
-        size="sm"
-        className={triggerClassName}
-        onClick={() => dialogRef.current?.showModal()}
-      >
-        {triggerLabel}
-      </Button>
+      {hideTrigger ? null : (
+        <Button
+          ref={triggerRef}
+          variant={triggerVariant}
+          size="sm"
+          className={triggerClassName}
+          onClick={() => dialogRef.current?.showModal()}
+        >
+          {triggerLabel}
+        </Button>
+      )}
       <dialog
+        id={dialogId}
         ref={dialogRef}
         aria-labelledby={titleId}
         onClose={() => triggerRef.current?.focus()}

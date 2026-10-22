@@ -205,7 +205,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U05 — Contributions workspace flow
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U04
 - Intent: one save model, less chrome around the text, and gentle guidance toward traceable evidence.
 - Files: `app/routes/contributions.tsx`, `app/routes/contribution-file.tsx`, `app/routes/contribution-company.tsx`, `app/routes/contributions-index.tsx`, `app/lib/contributions.ts`, new pure `app/lib/evidence-lint.ts`, `PRD.md` (contributions section), `tests/*`
@@ -228,6 +228,19 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
   - `lintEvidence` is unit-tested and deterministic.
   - Keyboard tree navigation (Arrow/Home/End) is preserved.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`; browser: create position, edit details and text, reload to confirm both persisted, drag-import, delete via dialog, no-JS create and delete.
+- Evidence (2026-10-21):
+  - One save model: for existing positions, the text and the details (title, company, dates, current role) autosave together through `intent=autosave` (server validates with `experienceInputSchema`, never creates companies on autosave, and returns field errors). The status reads "Saved just now / Saved · N min ago / Saving… / Unsaved changes / Couldn't save: …". New positions and the no-JS path keep an explicit save button.
+  - Notion-style page header: exhibit chip, company line, an overflow menu (Export, Import, Delete), the position as an editable title that wraps (`field-sizing: content`), and a properties list (Company, Dates with a Present state, Current role).
+  - Delete moved to the overflow menu → `ConfirmDialog` (new `dialogId` / `hideTrigger` / `openDialog`). The no-JS fallback form stays.
+  - Import: drop .md/.markdown/.txt files on the sheet (dashed overlay fades in over 150ms) or use the menu. Append/Replace confirmation moved to a dialog.
+  - New pure `app/lib/evidence-lint.ts` (`lintEvidence`) and `exhibitNumbers` in `app/lib/contributions.ts`; 11 tests in `tests/evidence-lint.test.ts`. Suggestions show in the editor footer popover; "Evidence looks complete" when there are none.
+  - Tree: no panel per folder; folders on the board with counts; hover- or focus-revealed "+" and settings actions (always visible on touch); exhibit chips; the active file is a small sheet. Arrow/Home/End navigation kept.
+  - Index page: "Evidence health" lists every file with exhibit, word count, edit date, and suggestion count, sorted weakest first, with an "Improve <weakest>" action.
+  - Company page on the shared primitives; delete through ConfirmDialog, or a plain reason while positions exist; save toast.
+  - `PRD.md` contributions section updated.
+  - `pnpm test` 309 passed; `typecheck`, `check`, `build` pass.
+  - Browser: title edit autosaved and survived a reload; the delete dialog opens from the menu with focus on Cancel; at 375px the long title wraps and `scrollWidth` = 375.
+  - Known gap: after a details autosave, the tree keeps the old title until the next navigation, because autosave skips loader revalidation.
 
 ## U06 — Home as returning-user start
 

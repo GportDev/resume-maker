@@ -1,5 +1,14 @@
 import {
+  CircleCheck,
+  Download,
+  FileUp,
+  Lightbulb,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react";
+import {
   type ChangeEvent,
+  type DragEvent,
   useCallback,
   useEffect,
   useRef,
@@ -8,7 +17,6 @@ import {
 import {
   data,
   Form,
-  Link,
   redirect,
   type ShouldRevalidateFunctionArgs,
   useBeforeUnload,
@@ -18,29 +26,30 @@ import {
 } from "react-router";
 import { z } from "zod";
 import { MarkdownEditor } from "../components/markdown-editor";
+import { Button, ButtonLink, buttonClass } from "../components/ui/button";
+import { ConfirmDialog, openDialog } from "../components/ui/confirm-dialog";
+import { Popover, popoverItemClass } from "../components/ui/popover";
 import { requireUser } from "../lib/auth.server";
 import {
   contributionTemplate,
+  exhibitNumbers,
   type ImportMode,
   mergeImportedMarkdown,
 } from "../lib/contributions";
+import { lintEvidence } from "../lib/evidence-lint";
 import {
   createExperience,
   deleteExperience,
   getExperience,
   listCompanies,
+  listExperiences,
   resolveExperienceCompany,
   updateExperience,
-  updateExperienceMarkdown,
 } from "../lib/repositories.server";
-import {
-  experienceInputSchema,
-  experienceMarkdownSchema,
-  firstFormError,
-} from "../lib/validation";
+import { experienceInputSchema, firstFormError } from "../lib/validation";
 import type { Route } from "./+types/contribution-file";
 
-const autosaveDelayMs = 1500;
+const autosaveDelayMs = 1200;
 const maxImportBytes = 200_000;
 const notFound = () =>
   new Response("Contribution file not found.", { status: 404 });
@@ -61,7 +70,10 @@ function requireExperienceId(experienceId: string): string {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireUser(request);
-  const companyList = await listCompanies(user.id);
+  const [companyList, experienceList] = await Promise.all([
+    listCompanies(user.id),
+    listExperiences(user.id),
+  ]);
   const companyOptions = companyList.map(({ id, name }) => ({ id, name }));
 
   if (params.experienceId === "new") {
@@ -71,6 +83,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       : (companyOptions[0]?.id ?? "");
     return {
       experience: null,
+      exhibit: null,
       companies: companyOptions,
       initialCompanyId: preselected,
       initialMarkdown: contributionTemplate(),
@@ -86,10 +99,23 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   return {
     experience,
+    exhibit: exhibitNumbers(experienceList).get(experience.id) ?? null,
     companies: companyOptions,
     initialCompanyId: experience.companyId,
     initialMarkdown: experience.markdown,
   };
+}
+
+function readExperienceForm(formData: FormData) {
+  return experienceInputSchema.safeParse({
+    companyId: formData.get("companyId") ?? "",
+    newCompanyName: formData.get("newCompanyName") ?? "",
+    position: formData.get("position"),
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+    isCurrent: formData.get("isCurrent") === "on",
+    markdown: formData.get("markdown"),
+  });
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -97,26 +123,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "save");
   const isNew = params.experienceId === "new";
-
-  if (intent === "autosave") {
-    if (isNew) throw notFound();
-    const parsed = experienceMarkdownSchema.safeParse(formData.get("markdown"));
-    if (!parsed.success) {
-      return data(
-        {
-          autosaveError: parsed.error.issues[0]?.message ?? "Invalid Markdown.",
-        },
-        { status: 400 },
-      );
-    }
-    const updated = await updateExperienceMarkdown(
-      user.id,
-      requireExperienceId(params.experienceId),
-      parsed.data,
-    );
-    if (!updated) throw notFound();
-    return data({ autosaved: true as const });
-  }
 
   if (intent === "delete") {
     if (isNew) throw notFound();
@@ -136,15 +142,40 @@ export async function action({ request, params }: Route.ActionArgs) {
     return redirect("/contributions");
   }
 
-  const parsed = experienceInputSchema.safeParse({
-    companyId: formData.get("companyId") ?? "",
-    newCompanyName: formData.get("newCompanyName") ?? "",
-    position: formData.get("position"),
-    startDate: formData.get("startDate"),
-    endDate: formData.get("endDate"),
-    isCurrent: formData.get("isCurrent") === "on",
-    markdown: formData.get("markdown"),
-  });
+  const parsed = readExperienceForm(formData);
+
+  if (intent === "autosave") {
+    if (isNew) throw notFound();
+    if (!parsed.success) {
+      return data(
+        { autosaveErrors: firstFormError(parsed.error) },
+        { status: 400 },
+      );
+    }
+    const { company: choice, ...fields } = parsed.data;
+    // Autosave never creates companies; a new company needs an explicit save.
+    if (choice.kind !== "existing") {
+      return data(
+        { autosaveErrors: { companyId: "Save to create the new company." } },
+        { status: 400 },
+      );
+    }
+    const company = await resolveExperienceCompany(user.id, choice);
+    if (!company) {
+      return data(
+        { autosaveErrors: { companyId: "Choose one of your companies." } },
+        { status: 400 },
+      );
+    }
+    const updated = await updateExperience(
+      user.id,
+      requireExperienceId(params.experienceId),
+      { ...fields, companyId: company.id },
+    );
+    if (!updated) throw notFound();
+    return data({ autosaved: true as const });
+  }
+
   if (!parsed.success) {
     return data({ errors: firstFormError(parsed.error) }, { status: 400 });
   }
@@ -184,8 +215,19 @@ export function shouldRevalidate({
   return defaultShouldRevalidate;
 }
 
-type AutosaveResult = { autosaved: true } | { autosaveError: string };
+type AutosaveResult =
+  | { autosaved: true }
+  | { autosaveErrors: Record<string, string> };
 type PendingImport = { texts: string[]; names: string[] };
+type Details = {
+  companyId: string;
+  newCompanyName: string;
+  position: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+};
+type Snapshot = Details & { markdown: string };
 
 export default function ContributionFile({
   loaderData,
@@ -200,105 +242,155 @@ export default function ContributionFile({
   );
 }
 
-function fieldError(errors: Record<string, string>, name: string) {
-  return errors[name] ? (
-    <p id={`${name}-error`} className="mt-1 text-xs text-danger">
-      {errors[name]}
-    </p>
-  ) : null;
+function sameSnapshot(left: Snapshot, right: Snapshot) {
+  return (Object.keys(left) as (keyof Snapshot)[]).every(
+    (key) => left[key] === right[key],
+  );
 }
+
+function snapshotForm(snapshot: Snapshot) {
+  const form: Record<string, string> = {
+    intent: "autosave",
+    companyId: snapshot.companyId,
+    newCompanyName: snapshot.newCompanyName,
+    position: snapshot.position,
+    startDate: snapshot.startDate,
+    endDate: snapshot.isCurrent ? "" : snapshot.endDate,
+    markdown: snapshot.markdown,
+  };
+  if (snapshot.isCurrent) form.isCurrent = "on";
+  return form;
+}
+
+const propertyLabel = "pt-1.5 text-[0.8125rem] text-ink-3";
+const propertyField =
+  "rounded-[4px] border border-transparent bg-transparent px-1.5 py-1 text-[0.9375rem] text-ink hover:border-rule focus:border-exhibit focus:bg-field focus-visible:outline-none aria-invalid:border-danger";
 
 function ContributionEditor({
   loaderData,
   actionData,
 }: Pick<Route.ComponentProps, "loaderData" | "actionData">) {
-  const { experience, companies, initialCompanyId, initialMarkdown } =
+  const { experience, exhibit, companies, initialCompanyId, initialMarkdown } =
     loaderData;
   const isNew = !experience;
-  const errors: Record<string, string> =
-    actionData && "errors" in actionData ? actionData.errors : {};
+  const initial: Snapshot = {
+    companyId: initialCompanyId,
+    newCompanyName: "",
+    position: experience?.position ?? "",
+    startDate: experience?.startDate ?? "",
+    endDate: experience?.endDate ?? "",
+    isCurrent: experience?.isCurrent ?? false,
+    markdown: initialMarkdown,
+  };
 
-  const [markdown, setMarkdown] = useState(initialMarkdown);
-  const [savedMarkdown, setSavedMarkdown] = useState(initialMarkdown);
-  const [detailsDirty, setDetailsDirty] = useState(false);
-  const [companyId, setCompanyId] = useState(initialCompanyId);
-  const [isCurrent, setIsCurrent] = useState(experience?.isCurrent ?? false);
+  const [current, setCurrent] = useState<Snapshot>(initial);
+  const [saved, setSaved] = useState<Snapshot>(initial);
+  const [failed, setFailed] = useState<Snapshot | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [failedMarkdown, setFailedMarkdown] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(
     null,
   );
   const [importError, setImportError] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [, setTick] = useState(0);
 
   const autosave = useFetcher<AutosaveResult>();
-  const autosavedMarkdownRef = useRef("");
-  const submittedMarkdownRef = useRef("");
+  const submittedRef = useRef<Snapshot | null>(null);
   const submittingRef = useRef(false);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const leaveDialogRef = useRef<HTMLDialogElement>(null);
+  const importDialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigation = useNavigation();
 
-  const markdownDirty = markdown !== savedMarkdown;
-  const dirty = markdownDirty || detailsDirty;
+  const dirty = !sameSnapshot(current, saved);
   const isSaving =
     navigation.state === "submitting" &&
     navigation.formData?.get("intent") === "save";
+  const formErrors: Record<string, string> =
+    actionData && "errors" in actionData ? actionData.errors : {};
+  const autosaveErrors =
+    autosave.data && "autosaveErrors" in autosave.data && failed
+      ? autosave.data.autosaveErrors
+      : {};
+  const errors = { ...autosaveErrors, ...formErrors };
+  const hints = lintEvidence(current.markdown);
+
+  function update<K extends keyof Snapshot>(key: K, value: Snapshot[K]) {
+    setCurrent((previous) => ({ ...previous, [key]: value }));
+  }
 
   useEffect(() => setHydrated(true), []);
+
+  // Refresh "Saved · 2 min ago" once a minute.
+  useEffect(() => {
+    if (!lastSavedAt) return;
+    const timer = window.setInterval(() => setTick((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, [lastSavedAt]);
 
   useEffect(() => {
     if (navigation.state === "idle") submittingRef.current = false;
   }, [navigation.state]);
 
   useEffect(() => {
-    if (actionData && "saved" in actionData) {
-      setSavedMarkdown(submittedMarkdownRef.current);
-      setDetailsDirty(false);
-      setFailedMarkdown(null);
-    }
-  }, [actionData]);
-
-  useEffect(() => {
-    if (!autosave.data) return;
+    if (!autosave.data || autosave.state !== "idle") return;
+    const submitted = submittedRef.current;
+    if (!submitted) return;
     if ("autosaved" in autosave.data) {
-      setSavedMarkdown(autosavedMarkdownRef.current);
-      setFailedMarkdown(null);
+      setSaved(submitted);
+      setFailed(null);
+      setLastSavedAt(Date.now());
     } else {
-      setFailedMarkdown(autosavedMarkdownRef.current);
+      setFailed(submitted);
     }
-  }, [autosave.data]);
+    submittedRef.current = null;
+  }, [autosave.data, autosave.state]);
 
   const submitAutosave = autosave.submit;
+  const saveNowRef = useRef<() => void>(() => {});
+  saveNowRef.current = () => {
+    if (isNew) {
+      formRef.current?.requestSubmit();
+      return;
+    }
+    if (!dirty || autosave.state !== "idle" || current.companyId === "") return;
+    submittedRef.current = current;
+    submitAutosave(snapshotForm(current), { method: "post" });
+  };
+
   useEffect(() => {
-    if (isNew || !markdownDirty || autosave.state !== "idle") return;
-    if (markdown === failedMarkdown) return;
-    const timer = window.setTimeout(() => {
-      autosavedMarkdownRef.current = markdown;
-      submitAutosave({ intent: "autosave", markdown }, { method: "post" });
-    }, autosaveDelayMs);
+    if (isNew || !dirty || autosave.state !== "idle") return;
+    if (current.companyId === "") return;
+    if (failed && sameSnapshot(current, failed)) return;
+    const timer = window.setTimeout(
+      () => saveNowRef.current(),
+      autosaveDelayMs,
+    );
     return () => window.clearTimeout(timer);
-  }, [
-    isNew,
-    markdown,
-    markdownDirty,
-    failedMarkdown,
-    autosave.state,
-    submitAutosave,
-  ]);
+  }, [isNew, dirty, autosave.state, current, failed]);
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      dirty &&
+      (dirty || autosave.state !== "idle") &&
       !submittingRef.current &&
       currentLocation.pathname !== nextLocation.pathname,
   );
 
   useEffect(() => {
-    const dialog = dialogRef.current;
+    const dialog = leaveDialogRef.current;
     if (!dialog) return;
     if (blocker.state === "blocked" && !dialog.open) dialog.showModal();
     if (blocker.state !== "blocked" && dialog.open) dialog.close();
   }, [blocker.state]);
+
+  useEffect(() => {
+    const dialog = importDialogRef.current;
+    if (!dialog) return;
+    if (pendingImport && !dialog.open) dialog.showModal();
+    if (!pendingImport && dialog.open) dialog.close();
+  }, [pendingImport]);
 
   useBeforeUnload(
     useCallback(
@@ -311,44 +403,21 @@ function ContributionEditor({
     ),
   );
 
-  function saveNow() {
-    if (isNew) {
-      formRef.current?.requestSubmit();
-      return;
-    }
-    if (!markdownDirty || autosave.state !== "idle") return;
-    autosavedMarkdownRef.current = markdown;
-    submitAutosave({ intent: "autosave", markdown }, { method: "post" });
-  }
-
-  function markSubmitting() {
-    submittingRef.current = true;
-  }
-
-  function onSave() {
-    submittedMarkdownRef.current = markdown;
-    markSubmitting();
-  }
-
-  async function onImport(event: ChangeEvent<HTMLInputElement>) {
-    const input = event.currentTarget;
-    const files = Array.from(input.files ?? []);
+  async function importFiles(files: File[]) {
     setImportError("");
     if (!files.length) return;
     const tooLarge = files.find((file) => file.size > maxImportBytes);
     if (tooLarge) {
-      input.value = "";
       setImportError(`${tooLarge.name} is larger than 200 KB.`);
       return;
     }
     try {
       const texts = await Promise.all(files.map((file) => file.text()));
-      input.value = "";
-      const untouchedTemplate = isNew && markdown === initialMarkdown;
-      if (markdown.trim() && !untouchedTemplate) {
+      const untouchedTemplate = isNew && current.markdown === initialMarkdown;
+      if (current.markdown.trim() && !untouchedTemplate) {
         setPendingImport({ texts, names: files.map((file) => file.name) });
       } else {
-        setMarkdown(mergeImportedMarkdown("", texts, "replace"));
+        update("markdown", mergeImportedMarkdown("", texts, "replace"));
       }
     } catch (error) {
       console.warn("Markdown import failed", error);
@@ -356,338 +425,430 @@ function ContributionEditor({
     }
   }
 
+  function onImport(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const files = Array.from(input.files ?? []);
+    input.value = "";
+    void importFiles(files);
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    setDragging(false);
+    const files = Array.from(event.dataTransfer.files).filter((file) =>
+      /\.(md|markdown|txt)$/i.test(file.name),
+    );
+    if (!files.length) {
+      setImportError("Drop .md, .markdown, or .txt files.");
+      return;
+    }
+    void importFiles(files);
+  }
+
   function confirmImport(mode: ImportMode) {
     if (!pendingImport) return;
-    setMarkdown(mergeImportedMarkdown(markdown, pendingImport.texts, mode));
+    update(
+      "markdown",
+      mergeImportedMarkdown(current.markdown, pendingImport.texts, mode),
+    );
     setPendingImport(null);
   }
 
-  const autosaveError =
-    autosave.data && "autosaveError" in autosave.data
-      ? autosave.data.autosaveError
-      : "";
+  const firstAutosaveError = Object.values(autosaveErrors)[0];
+  const savedAgo = lastSavedAt
+    ? Math.round((Date.now() - lastSavedAt) / 60_000)
+    : null;
   const status = isNew
-    ? dirty
-      ? "Not saved yet"
-      : "New position"
+    ? "Not saved yet. Create the position to start autosaving."
     : autosave.state !== "idle"
       ? "Saving…"
-      : autosaveError && markdown === failedMarkdown
-        ? `Autosave failed: ${autosaveError}`
-        : dirty
-          ? markdownDirty
+      : firstAutosaveError && failed && sameSnapshot(current, failed)
+        ? `Couldn't save: ${firstAutosaveError}`
+        : current.companyId === ""
+          ? "Save to create the new company"
+          : dirty
             ? "Unsaved changes"
-            : "Unsaved position details"
-          : "All changes saved";
+            : savedAgo === null
+              ? "All changes saved"
+              : savedAgo < 1
+                ? "Saved just now"
+                : `Saved · ${savedAgo} min ago`;
+  const statusTone = status.startsWith("Couldn't")
+    ? "text-danger"
+    : dirty
+      ? "text-warn"
+      : "text-ink-3";
+
+  const describe = (name: string) =>
+    errors[name] ? `${name}-error` : undefined;
+  const fieldError = (name: string) =>
+    errors[name] ? (
+      <p
+        id={`${name}-error`}
+        className="mt-1 px-1.5 text-[0.8125rem] text-danger"
+      >
+        {errors[name]}
+      </p>
+    ) : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-ink-2">
-            {experience ? experience.company : "New contribution file"}
-          </p>
-          <h2 className="mt-1 text-2xl font-semibold">
-            {experience ? experience.position : "New position"}
-          </h2>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {experience ? (
-            <a
-              href={`/contributions/${experience.id}/download`}
-              download
-              className="rounded-lg border border-rule-strong px-3 py-2 text-sm hover:border-exhibit"
-            >
-              Export saved Markdown
-            </a>
-          ) : null}
-        </div>
-      </div>
-
+    <div className="space-y-4">
       <Form
         ref={formRef}
         method="post"
-        onSubmit={onSave}
-        onChange={(event) => {
-          const target = event.target;
-          if (
-            target instanceof HTMLElement &&
-            target.closest("[data-position-details]")
-          ) {
-            setDetailsDirty(true);
-          }
+        onSubmit={() => {
+          submittingRef.current = true;
         }}
-        className="space-y-6"
       >
-        <section
-          data-position-details
-          aria-label="Position details"
-          className="grid gap-5 rounded-2xl border border-rule bg-sheet p-6 sm:grid-cols-2"
-        >
-          <div>
-            <label htmlFor="companyId" className="block text-sm font-medium">
-              Company
-            </label>
-            <select
-              id="companyId"
-              name="companyId"
-              value={companyId}
-              onChange={(event) => setCompanyId(event.target.value)}
-              aria-invalid={errors.companyId ? true : undefined}
-              aria-describedby={
-                errors.companyId ? "companyId-error" : undefined
-              }
-              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
-            >
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-              <option value="">New company…</option>
-            </select>
-            {fieldError(errors, "companyId")}
-          </div>
-          {companyId === "" || !hydrated ? (
-            <div>
-              <label
-                htmlFor="newCompanyName"
-                className="block text-sm font-medium"
-              >
-                New company name
-              </label>
-              <input
-                id="newCompanyName"
-                name="newCompanyName"
-                maxLength={160}
-                aria-describedby="newCompanyName-hint"
-                className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
-              />
-              <p id="newCompanyName-hint" className="mt-1 text-xs text-ink-3">
-                Used when “New company…” is selected.
-              </p>
-            </div>
-          ) : null}
-          <div className="sm:col-span-2">
-            <label htmlFor="position" className="block text-sm font-medium">
-              Position
-            </label>
-            <input
-              id="position"
-              name="position"
-              defaultValue={experience?.position ?? ""}
-              required
-              maxLength={160}
-              aria-invalid={errors.position ? true : undefined}
-              aria-describedby={errors.position ? "position-error" : undefined}
-              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
-            />
-            {fieldError(errors, "position")}
-          </div>
-          <div>
-            <label htmlFor="startDate" className="block text-sm font-medium">
-              Start date
-            </label>
-            <input
-              id="startDate"
-              name="startDate"
-              type="date"
-              defaultValue={experience?.startDate ?? ""}
-              required
-              aria-invalid={errors.startDate ? true : undefined}
-              aria-describedby={
-                errors.startDate ? "startDate-error" : undefined
-              }
-              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3"
-            />
-            {fieldError(errors, "startDate")}
-          </div>
-          <div>
-            <label htmlFor="endDate" className="block text-sm font-medium">
-              End date
-            </label>
-            <input
-              id="endDate"
-              name="endDate"
-              type="date"
-              defaultValue={experience?.endDate ?? ""}
-              disabled={hydrated && isCurrent}
-              aria-invalid={errors.endDate ? true : undefined}
-              aria-describedby={errors.endDate ? "endDate-error" : undefined}
-              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 disabled:opacity-40"
-            />
-            {fieldError(errors, "endDate")}
-          </div>
-          <label className="flex items-center gap-3 text-sm sm:col-span-2">
-            <input
-              name="isCurrent"
-              type="checkbox"
-              checked={isCurrent}
-              onChange={(event) => setIsCurrent(event.target.checked)}
-              className="size-4 accent-exhibit"
-            />
-            I currently work here
-          </label>
-        </section>
-
-        <section className="writing-sheet space-y-3 rounded-sheet bg-sheet px-5 pt-8 shadow-sheet sm:pr-10 sm:pl-20">
-          <MarkdownEditor
-            id="markdown"
-            name="markdown"
-            label="Contribution evidence (Markdown)"
-            value={markdown}
-            onChange={setMarkdown}
-            template={contributionTemplate()}
-            describedBy={errors.markdown ? "markdown-error" : "markdown-hint"}
-            invalid={Boolean(errors.markdown)}
-            onSaveShortcut={saveNow}
-            status={
-              <span
-                className={
-                  status.startsWith("Autosave failed")
-                    ? "text-danger"
-                    : dirty
-                      ? "text-warn"
-                      : "text-ink-3"
-                }
-              >
-                {status}
-              </span>
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: file drop is a pointer shortcut; the Import menu item is the keyboard path. */}
+        <div
+          onDragOver={(event) => {
+            if (!event.dataTransfer.types.includes("Files")) return;
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget as Node)) {
+              return;
             }
-          />
-          {errors.markdown ? (
-            fieldError(errors, "markdown")
-          ) : (
-            <p id="markdown-hint" className="sr-only">
-              {isNew
-                ? "Create the position once; after that, writing saves automatically."
-                : "Writing saves automatically. Save position to update details."}
-            </p>
-          )}
+            setDragging(false);
+          }}
+          onDrop={onDrop}
+          className="writing-sheet relative rounded-sheet bg-sheet px-5 pt-6 shadow-sheet sm:pr-10 sm:pl-20"
+        >
+          <div
+            aria-hidden="true"
+            data-show={dragging || undefined}
+            className="pointer-events-none absolute inset-2 z-10 grid place-items-center rounded-sheet border-2 border-dashed border-exhibit bg-exhibit-tint/85 text-sm font-medium text-exhibit opacity-0 transition-opacity duration-150 data-show:opacity-100"
+          >
+            Drop .md files to import
+          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="cursor-pointer rounded-lg border border-rule-strong px-3 py-2 text-xs hover:border-exhibit focus-within:outline-2 focus-within:outline-exhibit">
-              Import .md files
+          <div className="flex flex-wrap items-center gap-2 text-[0.8125rem] text-ink-3">
+            {exhibit ? (
+              <span className="rounded-stamp bg-manila-tint px-1.5 py-0.5 text-[0.6875rem] font-bold tracking-[0.06em] text-manila-ink uppercase">
+                Ex. {exhibit}
+              </span>
+            ) : null}
+            <span>
+              {experience ? experience.company : "New contribution file"}
+            </span>
+            <div className="ml-auto flex items-center gap-1">
+              {experience ? (
+                <Popover
+                  id="file-menu"
+                  align="end"
+                  triggerLabel="More actions for this position"
+                  triggerClassName={buttonClass({
+                    variant: "ghost",
+                    size: "sm",
+                  })}
+                  trigger={
+                    <MoreHorizontal aria-hidden="true" className="size-4" />
+                  }
+                >
+                  <a
+                    href={`/contributions/${experience.id}/download`}
+                    download
+                    className={popoverItemClass}
+                  >
+                    <Download
+                      aria-hidden="true"
+                      className="size-4 text-ink-3"
+                    />
+                    Export saved Markdown
+                  </a>
+                  <button
+                    type="button"
+                    className={popoverItemClass}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <FileUp aria-hidden="true" className="size-4 text-ink-3" />
+                    Import .md files
+                  </button>
+                  <button
+                    type="button"
+                    className={`${popoverItemClass} text-danger`}
+                    onClick={() => openDialog("delete-position")}
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />
+                    Delete position
+                  </button>
+                </Popover>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FileUp aria-hidden="true" className="size-4" />
+                  Import .md
+                </Button>
+              )}
               <input
+                ref={fileInputRef}
                 className="sr-only"
                 type="file"
+                tabIndex={-1}
+                aria-label="Import Markdown files"
                 multiple
                 accept=".md,.markdown,.txt,text/markdown,text/plain"
                 onChange={onImport}
               />
-            </label>
+            </div>
+          </div>
+
+          <label htmlFor="position" className="sr-only">
+            Position
+          </label>
+          <textarea
+            id="position"
+            name="position"
+            rows={1}
+            value={current.position}
+            onChange={(event) =>
+              update("position", event.target.value.replace(/\n/g, " "))
+            }
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.preventDefault();
+            }}
+            required
+            maxLength={160}
+            placeholder="Position title"
+            aria-invalid={errors.position ? true : undefined}
+            aria-describedby={describe("position")}
+            className="-mx-1.5 mt-2 block w-[calc(100%+0.75rem)] resize-none overflow-hidden rounded-[4px] border border-transparent bg-transparent px-1.5 text-[1.75rem] font-bold leading-tight tracking-[-0.015em] text-ink [field-sizing:content] placeholder:text-ink-3/70 hover:border-rule focus:border-exhibit focus-visible:outline-none"
+          />
+          {fieldError("position")}
+
+          <dl
+            data-position-details
+            className="mt-4 grid max-w-2xl grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1"
+          >
+            <dt className={propertyLabel}>
+              <label htmlFor="companyId">Company</label>
+            </dt>
+            <dd>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  id="companyId"
+                  name="companyId"
+                  value={current.companyId}
+                  onChange={(event) => update("companyId", event.target.value)}
+                  aria-invalid={errors.companyId ? true : undefined}
+                  aria-describedby={describe("companyId")}
+                  className={`${propertyField} max-w-full`}
+                >
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                  <option value="">New company…</option>
+                </select>
+                {current.companyId === "" || !hydrated ? (
+                  <>
+                    <label htmlFor="newCompanyName" className="sr-only">
+                      New company name
+                    </label>
+                    <input
+                      id="newCompanyName"
+                      name="newCompanyName"
+                      value={current.newCompanyName}
+                      onChange={(event) =>
+                        update("newCompanyName", event.target.value)
+                      }
+                      maxLength={160}
+                      placeholder={
+                        hydrated
+                          ? "New company name"
+                          : "New company name (if “New company…”)"
+                      }
+                      className={`${propertyField} border-rule bg-field`}
+                    />
+                  </>
+                ) : null}
+              </div>
+              {fieldError("companyId")}
+            </dd>
+
+            <dt className={propertyLabel}>Dates</dt>
+            <dd>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <label htmlFor="startDate" className="sr-only">
+                  Start date
+                </label>
+                <input
+                  id="startDate"
+                  name="startDate"
+                  type="date"
+                  value={current.startDate}
+                  onChange={(event) => update("startDate", event.target.value)}
+                  required
+                  aria-invalid={errors.startDate ? true : undefined}
+                  aria-describedby={describe("startDate")}
+                  className={`${propertyField} tabular`}
+                />
+                <span aria-hidden="true" className="text-ink-3">
+                  –
+                </span>
+                {current.isCurrent && hydrated ? (
+                  <span className="px-1.5 py-1 text-[0.9375rem] text-ink-2">
+                    Present
+                  </span>
+                ) : (
+                  <>
+                    <label htmlFor="endDate" className="sr-only">
+                      End date
+                    </label>
+                    <input
+                      id="endDate"
+                      name="endDate"
+                      type="date"
+                      value={current.endDate}
+                      onChange={(event) =>
+                        update("endDate", event.target.value)
+                      }
+                      aria-invalid={errors.endDate ? true : undefined}
+                      aria-describedby={describe("endDate")}
+                      className={`${propertyField} tabular`}
+                    />
+                  </>
+                )}
+                <label className="ml-2 inline-flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[0.875rem] text-ink-2 hover:bg-sheet-sunk">
+                  <input
+                    name="isCurrent"
+                    type="checkbox"
+                    checked={current.isCurrent}
+                    onChange={(event) =>
+                      update("isCurrent", event.target.checked)
+                    }
+                    className="size-4 accent-exhibit"
+                  />
+                  Current role
+                </label>
+              </div>
+              {fieldError("startDate")}
+              {fieldError("endDate")}
+            </dd>
+          </dl>
+
+          <div className="mt-5 border-t border-rule pt-6">
+            <MarkdownEditor
+              id="markdown"
+              name="markdown"
+              label="Contribution evidence (Markdown)"
+              value={current.markdown}
+              onChange={(value) => update("markdown", value)}
+              template={contributionTemplate()}
+              describedBy={errors.markdown ? "markdown-error" : "markdown-hint"}
+              invalid={Boolean(errors.markdown)}
+              onSaveShortcut={() => saveNowRef.current()}
+              status={<span className={statusTone}>{status}</span>}
+              footerExtra={<EvidenceHints hints={hints} />}
+            />
+            {errors.markdown ? (
+              <p
+                id="markdown-error"
+                className="pb-2 text-[0.8125rem] text-danger"
+              >
+                {errors.markdown}
+              </p>
+            ) : (
+              <p id="markdown-hint" className="sr-only">
+                {isNew
+                  ? "Create the position once; after that, everything saves automatically."
+                  : "Changes save automatically."}
+              </p>
+            )}
             {importError ? (
-              <p role="alert" className="text-xs text-danger">
+              <p role="alert" className="pb-3 text-[0.8125rem] text-danger">
                 {importError}
               </p>
             ) : null}
           </div>
-
-          {pendingImport ? (
-            <fieldset className="rounded-xl border border-warn/50 bg-warn-tint p-4">
-              <legend className="px-1 text-sm font-medium">
-                Import {pendingImport.names.join(", ")}?
-              </legend>
-              <p className="mt-1 text-xs text-ink-2">
-                Append adds the files after your current text. Replace discards
-                the current text in the editor.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => confirmImport("append")}
-                  className="rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-sheet hover:bg-ink-2"
-                >
-                  Append
-                </button>
-                <button
-                  type="button"
-                  onClick={() => confirmImport("replace")}
-                  className="rounded-lg border border-warn/60 px-3 py-1.5 text-xs text-warn hover:border-warn"
-                >
-                  Replace
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPendingImport(null)}
-                  className="rounded-lg border border-rule-strong px-3 py-1.5 text-xs hover:border-ink-3"
-                >
-                  Cancel
-                </button>
-              </div>
-            </fieldset>
-          ) : null}
-        </section>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="submit"
-            name="intent"
-            value="save"
-            disabled={isSaving}
-            className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
-          >
-            {isSaving ? "Saving…" : isNew ? "Create position" : "Save position"}
-          </button>
-          <Link
-            to="/contributions"
-            className="text-sm text-ink-2 hover:text-ink"
-          >
-            Back to contributions
-          </Link>
-          {errors.form ? (
-            <p role="alert" className="text-sm text-danger">
-              {errors.form}
-            </p>
-          ) : null}
         </div>
+
+        {isNew || !hydrated ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              type="submit"
+              name="intent"
+              value="save"
+              variant="primary"
+              pending={isSaving}
+            >
+              {isNew ? "Create position" : "Save position"}
+            </Button>
+            <ButtonLink to="/contributions" variant="ghost">
+              Cancel
+            </ButtonLink>
+            {errors.form ? (
+              <p role="alert" className="text-sm text-danger">
+                {errors.form}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </Form>
 
       {experience ? (
-        <details className="rounded-2xl border border-danger/30 bg-sheet p-6">
-          <summary className="cursor-pointer text-sm font-semibold text-danger">
-            Delete position
-          </summary>
-          <Form
-            method="post"
-            onSubmit={markSubmitting}
-            className="mt-4 space-y-3"
-          >
-            <label className="flex items-center gap-3 text-sm">
-              <input
-                type="checkbox"
-                name="confirm"
-                value="yes"
-                required
-                className="size-4 accent-danger"
-              />
-              I understand this permanently deletes this contribution file.
-            </label>
-            <button
-              type="submit"
-              name="intent"
-              value="delete"
-              className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger hover:border-danger"
-            >
-              Delete position
-            </button>
-            {errors.delete ? (
-              <p role="alert" className="text-sm text-danger">
-                {errors.delete}
-              </p>
-            ) : null}
-          </Form>
-        </details>
+        <div className={hydrated ? "" : "rounded-sheet bg-sheet p-5"}>
+          <ConfirmDialog
+            dialogId="delete-position"
+            hideTrigger
+            triggerLabel="Delete position"
+            title={`Delete ${experience.position}?`}
+            description="This permanently deletes the contribution file. Tailored documents that cited it keep their text."
+            confirmLabel="Delete position"
+            fields={{ intent: "delete" }}
+            error={errors.delete}
+          />
+        </div>
       ) : null}
 
       <dialog
-        ref={dialogRef}
+        ref={importDialogRef}
+        aria-labelledby="import-title"
+        onCancel={(event) => {
+          event.preventDefault();
+          setPendingImport(null);
+        }}
+        className="dialog m-auto w-[min(28rem,calc(100vw-2rem))] rounded-sheet bg-sheet p-6 text-ink shadow-lifted"
+      >
+        <h2 id="import-title" className="text-lg font-semibold">
+          Import {pendingImport?.names.join(", ")}?
+        </h2>
+        <p className="mt-2 text-sm text-ink-2">
+          Append adds the files after your current text. Replace discards the
+          current text in the editor.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" onClick={() => setPendingImport(null)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={() => confirmImport("replace")}>
+            Replace
+          </Button>
+          <Button
+            variant="primary"
+            autoFocus
+            onClick={() => confirmImport("append")}
+          >
+            Append
+          </Button>
+        </div>
+      </dialog>
+
+      <dialog
+        ref={leaveDialogRef}
         aria-labelledby="leave-title"
         onCancel={(event) => {
           event.preventDefault();
           blocker.reset?.();
         }}
-        className="m-auto max-w-md rounded-2xl border border-rule-strong bg-sheet p-6 text-ink backdrop:bg-ink/40"
+        className="dialog m-auto w-[min(28rem,calc(100vw-2rem))] rounded-sheet bg-sheet p-6 text-ink shadow-lifted"
       >
         <h2 id="leave-title" className="text-lg font-semibold">
           Leave with unsaved changes?
@@ -695,23 +856,56 @@ function ContributionEditor({
         <p className="mt-2 text-sm text-ink-2">
           Changes that have not been saved will be lost.
         </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => blocker.reset?.()}
-            className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-sheet hover:bg-ink-2"
-          >
-            Stay
-          </button>
-          <button
-            type="button"
-            onClick={() => blocker.proceed?.()}
-            className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger hover:border-danger"
-          >
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="danger" onClick={() => blocker.proceed?.()}>
             Leave
-          </button>
+          </Button>
+          <Button variant="primary" autoFocus onClick={() => blocker.reset?.()}>
+            Stay
+          </Button>
         </div>
       </dialog>
     </div>
+  );
+}
+
+function EvidenceHints({ hints }: { hints: ReturnType<typeof lintEvidence> }) {
+  if (!hints.length) {
+    return (
+      <span className="flex items-center gap-1.5 px-1.5 text-ok">
+        <CircleCheck aria-hidden="true" className="size-4" />
+        Evidence looks complete
+      </span>
+    );
+  }
+  return (
+    <Popover
+      id="evidence-hints"
+      align="end"
+      triggerLabel={`${hints.length} evidence suggestions`}
+      triggerClassName="pressable flex items-center gap-1.5 rounded-[4px] px-1.5 py-1 text-manila-ink hover:bg-manila-tint"
+      trigger={
+        <>
+          <Lightbulb aria-hidden="true" className="size-4" />
+          {hints.length} {hints.length === 1 ? "suggestion" : "suggestions"}
+        </>
+      }
+      className="w-80"
+    >
+      <ul className="space-y-2 p-2 text-[0.8125rem] leading-snug text-ink-2">
+        {hints.map((hint) => (
+          <li key={hint.id} className="flex gap-2">
+            <span
+              aria-hidden="true"
+              className="mt-1.5 size-1.5 shrink-0 rounded-full bg-manila"
+            />
+            {hint.message}
+          </li>
+        ))}
+      </ul>
+      <p className="border-t border-rule px-2 pt-2 pb-1 text-[0.75rem] text-ink-3">
+        Suggestions never block saving.
+      </p>
+    </Popover>
   );
 }
