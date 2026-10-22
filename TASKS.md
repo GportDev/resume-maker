@@ -244,7 +244,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U06 — Home as returning-user start
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02, U03
 - Intent: home serves the returning user moving many applications forward, not a first-visit pitch.
 - Files: `app/routes/home.tsx`, `app/lib/repositories.server.ts` (owner-scoped summary query if needed), `tests/*`
@@ -260,6 +260,14 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: all summary queries include the owner condition. Empty, first-run, and busy states are designed. The quick-tailor action and its errors behave as today.
 - Verify: `pnpm test && pnpm typecheck && pnpm build`; browser with a fresh user and a seeded user.
+- Evidence (2026-10-21):
+  - `app/routes/home.tsx`: no marketing hero. The sheet holds "Welcome back, <name>" with an active-applications line, a first-run "Get set up" checklist (contact details → first position → first analysis; shown until all three are done), and a compact Quick tailor (the textarea grows with content, application select plus the Analyze button). The board-side aside shows a pipeline snapshot (Saved/Applied/Interviewing/Offer counts as stamps, closed count), "Needs tailoring" (Saved or Applied with no resume, each with a Tailor button), recent analyses with fit and age, and tips only while the user has no analyses or no positions.
+  - New pure `summarizePipeline` in `app/lib/applications.ts` (+2 tests). All loader queries are owner-scoped repository calls (`listApplications`, `listApplicationDocumentSummaries`, `listAnalyses`, `getProfile`, `listExperiences`).
+  - Status, fit, match, and LinkedIn badges are now binder stamps (`statusStampTone`).
+  - `SheetSection` separators are adjacency-based (`.sheet-section + .sheet-section`), so there is no doubled hairline under page headers.
+  - Quick-tailor action and its errors are unchanged (error id is now `jobDescription-error` via `Field`).
+  - `pnpm test` 311 passed; `typecheck`, `check`, `build` pass.
+  - Browser: seeded user at 1024 shows 5 active, 2 waiting, a Fit 78 analysis; a fresh test account shows "Welcome, Sam", the setup checklist, zeroed pipeline, and tips; 375px has no horizontal scroll.
 
 ## U07 — Applications board
 

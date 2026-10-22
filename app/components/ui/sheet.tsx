@@ -72,7 +72,7 @@ export function SheetSection({
   return (
     <section
       aria-labelledby={title && id ? id : undefined}
-      className={`border-t border-rule pt-6 first:border-t-0 first:pt-0 ${className}`}
+      className={`sheet-section ${className}`}
     >
       {title || actions ? (
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">

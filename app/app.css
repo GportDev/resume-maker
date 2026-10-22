@@ -96,6 +96,13 @@ textarea,
   @apply outline-none;
 }
 
+/* Sections inside a sheet are separated by hairlines, not panels. */
+.sheet-section + .sheet-section {
+  margin-top: 2rem;
+  border-top: 1px solid var(--color-rule);
+  padding-top: 1.5rem;
+}
+
 /* Pressables confirm the press (Emil: 0.97 over 160ms ease-out). */
 .pressable {
   transition-property: transform, background-color, border-color, color;

@@ -119,7 +119,6 @@ export default function Profile({
           </Form>
         </SheetSection>
         <SheetSection
-          className="mt-8"
           title="Work experience"
           description={
             positionCount

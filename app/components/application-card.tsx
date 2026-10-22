@@ -12,49 +12,53 @@ import {
   type MatchRecommendation,
   matchRecommendationLabels,
 } from "../lib/job-match";
+import { Stamp, type StampTone } from "./ui/stamp";
 
-const statusTone: Record<ApplicationStatus, string> = {
-  saved: "bg-sheet-sunk text-ink-2",
-  applied: "bg-exhibit-tint text-exhibit-deep",
-  interviewing: "bg-violet-tint text-violet",
-  offer: "bg-ok-tint text-ok",
-  rejected: "bg-danger-tint text-danger",
-  withdrawn: "bg-warn-tint text-warn",
+export const statusStampTone: Record<ApplicationStatus, StampTone> = {
+  saved: "manila",
+  applied: "exhibit",
+  interviewing: "violet",
+  offer: "ok",
+  rejected: "danger",
+  withdrawn: "neutral",
 };
 
 export function StatusBadge({ status }: { status: ApplicationStatus }) {
   return (
-    <span
-      className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusTone[status]}`}
-    >
+    <Stamp tone={statusStampTone[status]}>
       {applicationStatusLabels[status]}
-    </span>
+    </Stamp>
   );
 }
 
 export function FitBadge({ score }: { score: number }) {
   return (
-    <span className="rounded bg-exhibit-tint px-1.5 py-0.5 text-xs font-medium text-exhibit-deep">
-      <span className="sr-only">Fit estimate </span>Fit {score}
+    <span className="tabular inline-flex items-baseline gap-1 text-[0.8125rem] text-ink-2">
+      <span className="sr-only">Fit estimate </span>
+      <span
+        aria-hidden="true"
+        className="text-[0.6875rem] font-semibold text-ink-3 uppercase tracking-[0.06em]"
+      >
+        Fit
+      </span>
+      <span className="font-semibold text-ink">{score}</span>
     </span>
   );
 }
 
-const recommendationTone: Record<MatchRecommendation, string> = {
-  strong_match: "bg-ok-tint text-ok",
-  worth_tailoring: "bg-violet-tint text-violet",
-  weak_match: "bg-sheet-sunk text-ink-2",
-  needs_review: "bg-warn-tint text-warn",
+const recommendationTone: Record<MatchRecommendation, StampTone> = {
+  strong_match: "ok",
+  worth_tailoring: "exhibit",
+  weak_match: "neutral",
+  needs_review: "warn",
 };
 
 export function MatchBadge({ match }: { match: JobMatchSummary }) {
   return (
-    <span
-      className={`rounded px-1.5 py-0.5 text-xs font-medium ${recommendationTone[match.recommendation]}`}
-    >
+    <Stamp tone={recommendationTone[match.recommendation]}>
       <span className="sr-only">Job match: </span>
       {matchRecommendationLabels[match.recommendation]} · {match.matchScore}%
-    </span>
+    </Stamp>
   );
 }
 
@@ -62,11 +66,7 @@ const documentLinkClass =
   "rounded text-exhibit hover:text-exhibit-deep focus-visible:outline-2 focus-visible:outline-exhibit";
 
 export function LinkedInBadge() {
-  return (
-    <span className="rounded bg-exhibit-tint px-1.5 py-0.5 text-xs text-exhibit">
-      LinkedIn
-    </span>
-  );
+  return <Stamp tone="neutral">LinkedIn</Stamp>;
 }
 
 export function LinkedInPostingLink({

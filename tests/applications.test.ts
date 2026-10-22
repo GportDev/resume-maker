@@ -11,6 +11,7 @@ import {
   parseMoveFormData,
   planMove,
   sortOrderStep,
+  summarizePipeline,
 } from "../app/lib/applications";
 
 const validInput = {
@@ -389,5 +390,39 @@ describe("parseMoveFormData", () => {
     badStatus.set("id", uuid(1));
     badStatus.set("status", "hired");
     expect(parseMoveFormData(badStatus)).toBeNull();
+  });
+});
+
+describe("summarizePipeline", () => {
+  it("counts statuses and finds untailored saved or applied applications", () => {
+    const summary = summarizePipeline(
+      [
+        { id: "a", status: "saved" },
+        { id: "b", status: "applied" },
+        { id: "c", status: "applied" },
+        { id: "d", status: "interviewing" },
+        { id: "e", status: "rejected" },
+      ],
+      new Map([
+        ["b", "resume-1"],
+        ["d", null],
+      ]),
+    );
+    expect(summary.counts).toEqual({
+      saved: 1,
+      applied: 2,
+      interviewing: 1,
+      offer: 0,
+      rejected: 1,
+      withdrawn: 0,
+    });
+    expect(summary.active).toBe(4);
+    expect(summary.needsTailoring).toEqual(["a", "c"]);
+  });
+
+  it("handles an empty board", () => {
+    const summary = summarizePipeline([], new Map());
+    expect(summary.active).toBe(0);
+    expect(summary.needsTailoring).toEqual([]);
   });
 });

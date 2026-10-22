@@ -345,3 +345,35 @@ export function parseApplicationStatus(
   const parsed = z.enum(applicationStatuses).safeParse(value);
   return parsed.success ? parsed.data : null;
 }
+
+export type PipelineSummary = {
+  counts: Record<ApplicationStatus, number>;
+  active: number;
+  needsTailoring: string[];
+};
+
+/**
+ * Counts per status, active applications (not rejected or withdrawn), and the
+ * Saved or Applied applications that have no tailored resume yet, in input
+ * order.
+ */
+export function summarizePipeline(
+  applications: { id: string; status: ApplicationStatus }[],
+  resumeIds: ReadonlyMap<string, string | null>,
+): PipelineSummary {
+  const counts = Object.fromEntries(
+    applicationStatuses.map((status) => [status, 0]),
+  ) as Record<ApplicationStatus, number>;
+  const needsTailoring: string[] = [];
+  for (const application of applications) {
+    counts[application.status] += 1;
+    if (
+      (application.status === "saved" || application.status === "applied") &&
+      !resumeIds.get(application.id)
+    ) {
+      needsTailoring.push(application.id);
+    }
+  }
+  const active = applications.length - counts.rejected - counts.withdrawn;
+  return { counts, active, needsTailoring };
+}
