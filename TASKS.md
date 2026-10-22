@@ -359,7 +359,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U10 — Resume and cover letter editors
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02, U09
 - Intent: edit with a live, trustworthy preview and never download stale content.
 - Files: `app/routes/resume-editor.tsx`, `app/routes/cover-letter-editor.tsx`, `app/lib/resume.ts`, `app/lib/cover-letter.ts`, `tests/resume.test.ts`, `tests/cover-letter.test.ts`
@@ -377,6 +377,15 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: PDF still single-column with selectable text. Persisted structure and validation unchanged unless covered by updated tests. Same patterns applied to cover-letter paragraphs (keep each paragraph's citation).
 - Verify: `pnpm test` (incl. `pdf.test.tsx`), `pnpm typecheck && pnpm build`; browser: edit, then download without saving and confirm the PDF contains the edit.
+- Evidence (2026-10-21):
+  - Resume editor: all fields are controlled state, and the preview renders from that state (live). A sticky action bar shows "Unsaved changes / All changes saved / <error>", Save, and Download PDF. With unsaved edits the second button becomes "Save and download PDF" (saves, then requests the PDF), so a stale PDF is never offered. An unsaved-changes guard (new `components/unsaved-guard.tsx`) covers in-app navigation and tab close.
+  - Bullets: move up/down, remove (disabled on a position's last bullet, with the reason), and revert to saved text. No free-form add. Each bullet shows "Cites Ex. N · position" chips (`ExhibitCitation`) for its source positions.
+  - Skills: new `components/skill-input.tsx` chips (Enter or comma adds, × removes, Backspace removes the last, arrow keys reorder, de-duplicated); it posts the same comma-separated `skills` field and renders a plain textarea before hydration.
+  - New `components/paper-preview.tsx`: Letter-size page (816×1056 CSS px) scaled to fit its column, with a page count and dashed "Page N" break markers. It measures on mount and on resize.
+  - Server: `resumeEditSchema` / `readBulletFields` / `applyResumeEdits` (`app/lib/resume.ts`) accept ordered bullets with `bulletRef=experience:source`. Each bullet keeps its source's citations; unknown or duplicate sources and emptied positions are rejected with a clear message. The cover letter gets the same treatment (`readParagraphFields`, ordered `paragraphs` with `paragraphRef`, at least one).
+  - Cover letter editor: the same patterns (live serif preview, sticky bar, save-and-download, reorder/remove/revert, citation chips).
+  - Tests: +5 resume tests (reorder keeps citations, removal, non-empty positions, bad sources, ref parsing), +3 cover-letter order tests, existing tests updated to the ordered format. `pnpm test` 322 passed (includes `pdf.test.tsx`); `typecheck`, `check`, `build` pass.
+  - Browser: moving resume bullet 2 up updated the preview at once and showed "Save and download PDF"; Save gave "Resume saved." and kept the order; "Save and download" saved, then requested `/resumes/:id/pdf` (200, handled as a download); cover-letter paragraph reorder saved with "Cover letter saved."; at 375px the page scales to 345px wide with no horizontal scroll.
 
 ## U11 — Find jobs
 

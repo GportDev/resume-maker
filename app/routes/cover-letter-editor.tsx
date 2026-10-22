@@ -1,16 +1,32 @@
+import { ArrowDown, ArrowUp, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { data, Form, Link, useNavigation } from "react-router";
 import { z } from "zod";
+import {
+  ExhibitCitation,
+  type PositionLabel,
+} from "../components/analysis-summary";
+import { PaperPreview } from "../components/paper-preview";
+import { Button, buttonClass, textLinkClass } from "../components/ui/button";
+import { describedBy, Field, fieldClass } from "../components/ui/field";
+import { PageHeader, Sheet, SheetSection } from "../components/ui/sheet";
+import { useToast } from "../components/ui/toast";
+import { UnsavedChangesGuard } from "../components/unsaved-guard";
 import { requireUser } from "../lib/auth.server";
+import { exhibitNumbers } from "../lib/contributions";
 import {
   applyCoverLetterEdits,
+  type CoverLetterContent,
   coverLetterContentSchema,
   coverLetterEditSchema,
   formatLetterDate,
+  readParagraphFields,
   resolveCoverLetterSender,
 } from "../lib/cover-letter";
 import {
   getCoverLetter,
   getProfile,
+  listExperiences,
   updateCoverLetter,
 } from "../lib/repositories.server";
 import { firstFormError } from "../lib/validation";
@@ -37,10 +53,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireUser(request);
-  const [coverLetter, profile] = await Promise.all([
+  const [coverLetter, profile, experienceList] = await Promise.all([
     requireCoverLetter(user.id, params.coverLetterId),
     getProfile(user.id),
+    listExperiences(user.id),
   ]);
+  const exhibits = exhibitNumbers(experienceList);
   return {
     coverLetter: {
       id: coverLetter.id,
@@ -51,6 +69,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     },
     content: coverLetterContentSchema.parse(coverLetter.content),
     sender: resolveCoverLetterSender(profile, user),
+    positions: experienceList.map(({ id, position, company }) => ({
+      id,
+      position,
+      company,
+      exhibit: exhibits.get(id) ?? null,
+    })),
   };
 }
 
@@ -63,7 +87,10 @@ export async function action({ request, params }: Route.ActionArgs) {
     title: formData.get("title"),
     recipient: formData.get("recipient"),
     opening: formData.get("opening"),
-    paragraphs: formData.getAll("paragraph"),
+    paragraphs: readParagraphFields(
+      formData.getAll("paragraphRef"),
+      formData.getAll("paragraph"),
+    ),
     closing: formData.get("closing"),
   });
   if (!parsed.success) {
@@ -71,205 +98,410 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   const { title, ...edits } = parsed.data;
-  await updateCoverLetter(user.id, coverLetter.id, {
-    title,
-    content: applyCoverLetterEdits(content, edits),
-  });
+  let edited: ReturnType<typeof applyCoverLetterEdits>;
+  try {
+    edited = applyCoverLetterEdits(content, edits);
+  } catch {
+    return data(
+      {
+        errors: {
+          form: "A paragraph no longer matches its source. Reload and try again.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+  await updateCoverLetter(user.id, coverLetter.id, { title, content: edited });
   return data({ saved: true as const });
 }
 
-const inputClass =
-  "mt-2 w-full rounded-xl border border-rule-strong bg-field p-4 leading-6 outline-none focus:border-exhibit";
+type ParagraphItem = {
+  key: string;
+  sourceIndex: number;
+  text: string;
+  savedText: string;
+  sources: string[];
+};
 
-function FieldError({ id, message }: { id: string; message?: string }) {
-  return message ? (
-    <p id={id} className="mt-1 text-xs text-danger">
-      {message}
-    </p>
-  ) : null;
+type LetterDraft = {
+  title: string;
+  recipient: string;
+  opening: string;
+  paragraphs: ParagraphItem[];
+  closing: string;
+};
+
+function letterDraft(title: string, content: CoverLetterContent): LetterDraft {
+  return {
+    title,
+    recipient: content.recipient,
+    opening: content.opening,
+    closing: content.closing,
+    paragraphs: content.bodyParagraphs.map((paragraph, index) => ({
+      key: String(index),
+      sourceIndex: index,
+      text: paragraph.text,
+      savedText: paragraph.text,
+      sources: paragraph.sourceExperienceIds,
+    })),
+  };
 }
+
+function serializeLetter(draft: LetterDraft) {
+  return JSON.stringify({
+    ...draft,
+    paragraphs: draft.paragraphs.map(({ sourceIndex, text }) => [
+      sourceIndex,
+      text,
+    ]),
+  });
+}
+
+const iconButton =
+  "grid size-7 place-items-center rounded-[4px] text-ink-3 hover:bg-sheet-sunk hover:text-ink disabled:opacity-30";
 
 export default function CoverLetterEditor({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { coverLetter, content, sender } = loaderData;
-  const errors: Record<string, string> =
-    actionData && "errors" in actionData ? actionData.errors : {};
+  const downloadAfterSave = useRef(false);
   const navigation = useNavigation();
-  const isSaving = navigation.state === "submitting";
-  const back = coverLetter.applicationId
-    ? { to: `/applications/${coverLetter.applicationId}`, label: "application" }
-    : { to: `/analyses/${coverLetter.analysisId}`, label: "analysis" };
-  const contact = [sender.email, sender.phone, sender.location].filter(Boolean);
+  const saved = Boolean(actionData && "saved" in actionData);
+  useToast(saved ? "Cover letter saved." : null, actionData);
+
+  useEffect(() => {
+    if (actionData && "errors" in actionData) downloadAfterSave.current = false;
+  }, [actionData]);
+
+  useEffect(() => {
+    if (saved && navigation.state === "idle" && downloadAfterSave.current) {
+      downloadAfterSave.current = false;
+      window.location.assign(`/cover-letters/${loaderData.coverLetter.id}/pdf`);
+    }
+  }, [saved, navigation.state, loaderData.coverLetter.id]);
 
   return (
-    <main id="main" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <Link
-          to={back.to}
-          className="text-sm text-exhibit hover:text-exhibit-deep"
-        >
-          ← Back to {back.label}
-        </Link>
-        <a
-          href={`/cover-letters/${coverLetter.id}/pdf`}
-          className="rounded-xl bg-exhibit px-4 py-3 font-semibold text-sheet hover:bg-exhibit-deep"
-        >
-          Download PDF
-        </a>
-      </div>
+    <LetterForm
+      key={loaderData.coverLetter.updatedAt.toString()}
+      loaderData={loaderData}
+      errors={actionData && "errors" in actionData ? actionData.errors : {}}
+      onSaveAndDownload={() => {
+        downloadAfterSave.current = true;
+      }}
+    />
+  );
+}
 
-      <div className="mt-7 grid gap-8 lg:grid-cols-2">
+function LetterForm({
+  loaderData,
+  errors,
+  onSaveAndDownload,
+}: {
+  loaderData: Route.ComponentProps["loaderData"];
+  errors: Record<string, string>;
+  onSaveAndDownload: () => void;
+}) {
+  const { coverLetter, content, sender, positions } = loaderData;
+  const initial = useRef(letterDraft(coverLetter.title, content));
+  const [draft, setDraft] = useState(initial.current);
+  const navigation = useNavigation();
+  const formRef = useRef<HTMLFormElement>(null);
+  const submittingRef = useRef(false);
+  const isSaving = navigation.state === "submitting";
+  const dirty = serializeLetter(draft) !== serializeLetter(initial.current);
+  const labels = new Map<string, PositionLabel>(
+    positions.map((position) => [position.id, position]),
+  );
+  const firstError = Object.values(errors)[0];
+  const contact = [sender.email, sender.phone, sender.location].filter(Boolean);
+
+  useEffect(() => {
+    if (navigation.state === "idle") submittingRef.current = false;
+  }, [navigation.state]);
+
+  function updateParagraphs(
+    change: (list: ParagraphItem[]) => ParagraphItem[],
+  ) {
+    setDraft((previous) => ({
+      ...previous,
+      paragraphs: change(previous.paragraphs),
+    }));
+  }
+
+  function move(index: number, offset: number) {
+    updateParagraphs((list) => {
+      const target = index + offset;
+      if (target < 0 || target >= list.length) return list;
+      const next = [...list];
+      [next[index], next[target]] = [
+        next[target] as ParagraphItem,
+        next[index] as ParagraphItem,
+      ];
+      return next;
+    });
+  }
+
+  const text = (name: "title" | "recipient" | "opening" | "closing") => ({
+    id: name,
+    name,
+    value: draft[name],
+    onChange: (event: { target: { value: string } }) =>
+      setDraft({ ...draft, [name]: event.target.value }),
+    "aria-invalid": errors[name] ? true : undefined,
+    "aria-describedby": describedBy(name, errors[name]),
+  });
+
+  return (
+    <main
+      id="main"
+      className="mx-auto grid max-w-[90rem] grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+    >
+      <Sheet className="rounded-t-none pb-0 sm:pb-0">
         <Form
-          key={coverLetter.updatedAt.toString()}
+          ref={formRef}
           method="post"
-          className="space-y-5 rounded-2xl border border-rule bg-sheet p-6"
+          onSubmit={() => {
+            submittingRef.current = true;
+          }}
         >
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
-              Cover letter editor
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold">{coverLetter.title}</h1>
-          </div>
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium">
-              Title
-            </label>
-            <input
-              id="title"
-              name="title"
-              defaultValue={coverLetter.title}
-              required
-              maxLength={160}
-              aria-invalid={errors.title ? true : undefined}
-              aria-describedby={errors.title ? "title-error" : undefined}
-              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
-            />
-            <FieldError id="title-error" message={errors.title} />
-          </div>
-          <div>
-            <label htmlFor="recipient" className="block text-sm font-medium">
-              Greeting
-            </label>
-            <input
-              id="recipient"
-              name="recipient"
-              defaultValue={content.recipient}
-              required
-              maxLength={200}
-              aria-invalid={errors.recipient ? true : undefined}
-              aria-describedby={
-                errors.recipient ? "recipient-error" : undefined
-              }
-              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
-            />
-            <FieldError id="recipient-error" message={errors.recipient} />
-          </div>
-          <div>
-            <label htmlFor="opening" className="block text-sm font-medium">
-              Opening
-            </label>
-            <textarea
-              id="opening"
-              name="opening"
-              defaultValue={content.opening}
-              required
-              minLength={20}
-              maxLength={1_200}
-              aria-invalid={errors.opening ? true : undefined}
-              aria-describedby={errors.opening ? "opening-error" : undefined}
-              className={`${inputClass} min-h-28`}
-            />
-            <FieldError id="opening-error" message={errors.opening} />
-          </div>
-          <fieldset className="space-y-4 rounded-xl border border-rule p-4">
-            <legend className="px-2 font-medium">Body paragraphs</legend>
-            <p className="text-xs text-ink-3">
-              Each paragraph keeps its link to the experience it was written
-              from.
-            </p>
-            {content.bodyParagraphs.map((paragraph, index) => (
-              <div
-                key={`${paragraph.sourceExperienceIds.join(":")}:${paragraph.text}`}
+          <PageHeader
+            back={
+              <Link
+                to={
+                  coverLetter.applicationId
+                    ? `/applications/${coverLetter.applicationId}`
+                    : `/analyses/${coverLetter.analysisId}`
+                }
+                className={textLinkClass}
               >
-                <label
-                  htmlFor={`paragraph-${index}`}
-                  className="block text-xs text-ink-2"
-                >
-                  Paragraph {index + 1}
-                </label>
-                <textarea
-                  id={`paragraph-${index}`}
-                  name="paragraph"
-                  defaultValue={paragraph.text}
+                ← Back to{" "}
+                {coverLetter.applicationId ? "application" : "analysis"}
+              </Link>
+            }
+            title="Cover letter"
+            meta={coverLetter.title}
+          />
+
+          <SheetSection title="Letter" id="letter-heading">
+            <div className="grid gap-5">
+              <Field
+                id="title"
+                label="Title (not printed)"
+                error={errors.title}
+              >
+                <input
+                  {...text("title")}
                   required
-                  minLength={40}
-                  maxLength={1_500}
-                  className={`${inputClass} min-h-32 text-sm`}
+                  maxLength={160}
+                  className={fieldClass}
                 />
-              </div>
-            ))}
-            <FieldError id="paragraphs-error" message={errors.paragraphs} />
-          </fieldset>
-          <div>
-            <label htmlFor="closing" className="block text-sm font-medium">
-              Closing
-            </label>
-            <textarea
-              id="closing"
-              name="closing"
-              defaultValue={content.closing}
-              required
-              minLength={10}
-              maxLength={800}
-              aria-invalid={errors.closing ? true : undefined}
-              aria-describedby={errors.closing ? "closing-error" : undefined}
-              className={`${inputClass} min-h-24`}
-            />
-            <FieldError id="closing-error" message={errors.closing} />
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="rounded-xl bg-ink px-5 py-3 font-semibold text-sheet hover:bg-ink-2 disabled:opacity-60"
+              </Field>
+              <Field id="recipient" label="Recipient" error={errors.recipient}>
+                <input
+                  {...text("recipient")}
+                  required
+                  maxLength={200}
+                  className={fieldClass}
+                />
+              </Field>
+              <Field id="opening" label="Opening" error={errors.opening}>
+                <textarea
+                  {...text("opening")}
+                  required
+                  maxLength={1_200}
+                  className={`${fieldClass} min-h-20 leading-6 [field-sizing:content]`}
+                />
+              </Field>
+            </div>
+          </SheetSection>
+
+          <SheetSection
+            title="Body paragraphs"
+            id="body-heading"
+            description="Each paragraph keeps its link to the evidence it was written from. Reorder or remove; new paragraphs can't be added."
+          >
+            {errors.paragraphs ? (
+              <p className="mb-3 text-[0.8125rem] text-danger">
+                {errors.paragraphs}
+              </p>
+            ) : null}
+            <ol className="space-y-4">
+              {draft.paragraphs.map((paragraph, index) => {
+                const label = `paragraph ${index + 1}`;
+                return (
+                  <li key={paragraph.key}>
+                    <input
+                      type="hidden"
+                      name="paragraphRef"
+                      value={paragraph.sourceIndex}
+                    />
+                    <div className="flex items-start gap-1.5">
+                      <label
+                        htmlFor={`paragraph-${paragraph.key}`}
+                        className="sr-only"
+                      >
+                        Body {label}
+                      </label>
+                      <textarea
+                        id={`paragraph-${paragraph.key}`}
+                        name="paragraph"
+                        value={paragraph.text}
+                        onChange={(event) =>
+                          updateParagraphs((items) =>
+                            items.map((item) =>
+                              item.key === paragraph.key
+                                ? { ...item, text: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                        required
+                        maxLength={1_500}
+                        className={`${fieldClass} min-h-24 font-serif text-[0.9375rem] leading-7 [field-sizing:content]`}
+                      />
+                      <div className="flex shrink-0 flex-col">
+                        <button
+                          type="button"
+                          aria-label={`Move ${label} up`}
+                          disabled={index === 0}
+                          onClick={() => move(index, -1)}
+                          className={iconButton}
+                        >
+                          <ArrowUp aria-hidden="true" className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Move ${label} down`}
+                          disabled={index === draft.paragraphs.length - 1}
+                          onClick={() => move(index, 1)}
+                          className={iconButton}
+                        >
+                          <ArrowDown aria-hidden="true" className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${label}`}
+                          title={
+                            draft.paragraphs.length === 1
+                              ? "Keep at least one paragraph"
+                              : "Remove paragraph"
+                          }
+                          disabled={draft.paragraphs.length === 1}
+                          onClick={() =>
+                            updateParagraphs((items) =>
+                              items.filter(
+                                (item) => item.key !== paragraph.key,
+                              ),
+                            )
+                          }
+                          className={iconButton}
+                        >
+                          <Trash2 aria-hidden="true" className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Revert ${label} to saved text`}
+                          title="Revert to saved text"
+                          disabled={paragraph.text === paragraph.savedText}
+                          onClick={() =>
+                            updateParagraphs((items) =>
+                              items.map((item) =>
+                                item.key === paragraph.key
+                                  ? { ...item, text: item.savedText }
+                                  : item,
+                              ),
+                            )
+                          }
+                          className={iconButton}
+                        >
+                          <RotateCcw aria-hidden="true" className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
+                      <span>Cites</span>
+                      {paragraph.sources.map((id) => {
+                        const position = labels.get(id);
+                        return position ? (
+                          <ExhibitCitation key={id} position={position} />
+                        ) : null;
+                      })}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </SheetSection>
+
+          <SheetSection title="Closing" id="closing-heading">
+            <Field id="closing" label="Closing" error={errors.closing}>
+              <textarea
+                {...text("closing")}
+                required
+                maxLength={800}
+                className={`${fieldClass} min-h-16 leading-6 [field-sizing:content]`}
+              />
+            </Field>
+          </SheetSection>
+
+          <div className="sticky bottom-0 z-10 -mx-5 mt-6 flex flex-wrap items-center gap-3 border-t border-rule bg-sheet/95 px-5 py-3 backdrop-blur-[2px] sm:-mx-8 sm:px-8">
+            <p
+              role="status"
+              className={`mr-auto text-sm ${firstError ? "text-danger" : dirty ? "text-warn" : "text-ink-3"}`}
             >
-              {isSaving ? "Saving…" : "Save changes"}
-            </button>
-            <span role="status" className="text-sm text-ok">
-              {actionData && "saved" in actionData ? "Saved." : ""}
-            </span>
+              {firstError ?? (dirty ? "Unsaved changes" : "All changes saved")}
+            </p>
+            <Button type="submit" variant="primary" pending={isSaving}>
+              {isSaving ? "Saving…" : "Save"}
+            </Button>
+            {dirty ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isSaving}
+                onClick={() => {
+                  onSaveAndDownload();
+                  formRef.current?.requestSubmit();
+                }}
+              >
+                Save and download PDF
+              </Button>
+            ) : (
+              <a
+                href={`/cover-letters/${coverLetter.id}/pdf`}
+                className={buttonClass({ variant: "secondary" })}
+              >
+                Download PDF
+              </a>
+            )}
           </div>
         </Form>
+        <UnsavedChangesGuard dirty={dirty} submittingRef={submittingRef} />
+      </Sheet>
 
-        <section aria-labelledby="preview-heading">
-          <p
-            id="preview-heading"
-            className="mb-3 text-sm font-semibold uppercase tracking-wider text-ink-3"
-          >
-            Preview
-          </p>
-          <article className="min-h-[60rem] bg-white p-12 text-[0.95rem] leading-7 text-ink shadow-2xl">
-            <h2 className="text-3xl font-bold">{sender.fullName}</h2>
+      <div className="lg:sticky lg:top-4 lg:self-start lg:pt-6">
+        <PaperPreview label="Cover letter preview">
+          <article className="font-serif text-[14px] leading-[1.6]">
+            <h2 className="font-sans text-[24px] leading-tight font-bold">
+              {sender.fullName}
+            </h2>
             {contact.length ? (
-              <p className="mt-1 text-xs text-ink-3">{contact.join(" | ")}</p>
+              <p className="mt-1 font-sans text-[11px] text-[#444]">
+                {contact.join(" | ")}
+              </p>
             ) : null}
             <p className="mt-8">{formatLetterDate(coverLetter.updatedAt)}</p>
-            <p className="mt-6">{content.recipient}</p>
-            <p className="mt-4">{content.opening}</p>
-            {content.bodyParagraphs.map((paragraph) => (
-              <p
-                key={`${paragraph.sourceExperienceIds.join(":")}:${paragraph.text}`}
-                className="mt-4"
-              >
+            <p className="mt-6">{draft.recipient}</p>
+            <p className="mt-4">{draft.opening}</p>
+            {draft.paragraphs.map((paragraph) => (
+              <p key={paragraph.key} className="mt-4">
                 {paragraph.text}
               </p>
             ))}
-            <p className="mt-4">{content.closing}</p>
+            <p className="mt-4">{draft.closing}</p>
             <p className="mt-6 font-bold">{sender.fullName}</p>
           </article>
-        </section>
+        </PaperPreview>
       </div>
     </main>
   );

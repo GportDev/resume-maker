@@ -70,13 +70,16 @@ export const coverLetterEditSchema = z.object({
     .max(1_200),
   paragraphs: z
     .array(
-      z
-        .string()
-        .trim()
-        .min(40, "Each paragraph must be at least 40 characters.")
-        .max(1_500),
+      z.object({
+        sourceIndex: z.number().int().min(0),
+        text: z
+          .string()
+          .trim()
+          .min(40, "Each paragraph must be at least 40 characters.")
+          .max(1_500),
+      }),
     )
-    .min(1)
+    .min(1, "Keep at least one body paragraph.")
     .max(5),
   closing: z
     .string()
@@ -87,17 +90,41 @@ export const coverLetterEditSchema = z.object({
 
 export type CoverLetterEdit = z.output<typeof coverLetterEditSchema>;
 
+/** Pairs posted paragraph texts with the index of the paragraph they came from. */
+export function readParagraphFields(
+  refs: FormDataEntryValue[],
+  texts: FormDataEntryValue[],
+): { sourceIndex: number; text: string }[] {
+  return texts.map((text, index) => ({
+    sourceIndex: Number.parseInt(String(refs[index] ?? ""), 10),
+    text: String(text),
+  }));
+}
+
+/**
+ * Applies edited text, order, and removals. Each paragraph keeps the
+ * citations of the generated paragraph it came from; none can be added.
+ */
 export function applyCoverLetterEdits(
   content: CoverLetterContent,
   input: Omit<CoverLetterEdit, "title">,
 ): CoverLetterContent {
+  const seen = new Set<number>();
+  const bodyParagraphs = input.paragraphs.map((paragraph) => {
+    const source = content.bodyParagraphs[paragraph.sourceIndex];
+    if (!source || seen.has(paragraph.sourceIndex)) {
+      throw new Error("A paragraph no longer matches its source.");
+    }
+    seen.add(paragraph.sourceIndex);
+    return {
+      text: paragraph.text,
+      sourceExperienceIds: source.sourceExperienceIds,
+    };
+  });
   return coverLetterContentSchema.parse({
     recipient: input.recipient,
     opening: input.opening,
-    bodyParagraphs: content.bodyParagraphs.map((paragraph, index) => ({
-      ...paragraph,
-      text: input.paragraphs[index] ?? paragraph.text,
-    })),
+    bodyParagraphs,
     closing: input.closing,
   });
 }

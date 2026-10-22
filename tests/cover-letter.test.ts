@@ -85,7 +85,11 @@ describe("applyCoverLetterEdits", () => {
       recipient: "Dear Globex team",
       opening: content.opening,
       paragraphs: [
-        "Rewritten first paragraph that still describes the Acme services work.",
+        {
+          sourceIndex: 0,
+          text: "Rewritten first paragraph that still describes the Acme services work.",
+        },
+        { sourceIndex: 1, text: content.bodyParagraphs[1]?.text ?? "" },
       ],
       closing: "Best regards and thank you.",
     });
@@ -111,13 +115,64 @@ describe("applyCoverLetterEdits", () => {
   });
 });
 
+describe("applyCoverLetterEdits order", () => {
+  const base = {
+    recipient: content.recipient,
+    opening: content.opening,
+    closing: content.closing,
+  };
+
+  it("reorders paragraphs and keeps each paragraph's citations", () => {
+    const edited = applyCoverLetterEdits(content, {
+      ...base,
+      paragraphs: [
+        { sourceIndex: 1, text: content.bodyParagraphs[1]?.text ?? "" },
+        { sourceIndex: 0, text: content.bodyParagraphs[0]?.text ?? "" },
+      ],
+    });
+    expect(edited.bodyParagraphs).toEqual([
+      content.bodyParagraphs[1],
+      content.bodyParagraphs[0],
+    ]);
+  });
+
+  it("removes paragraphs that were not posted", () => {
+    const edited = applyCoverLetterEdits(content, {
+      ...base,
+      paragraphs: [
+        { sourceIndex: 1, text: content.bodyParagraphs[1]?.text ?? "" },
+      ],
+    });
+    expect(edited.bodyParagraphs).toEqual([content.bodyParagraphs[1]]);
+  });
+
+  it("rejects unknown or duplicated sources", () => {
+    const text = content.bodyParagraphs[0]?.text ?? "";
+    expect(() =>
+      applyCoverLetterEdits(content, {
+        ...base,
+        paragraphs: [{ sourceIndex: 7, text }],
+      }),
+    ).toThrow();
+    expect(() =>
+      applyCoverLetterEdits(content, {
+        ...base,
+        paragraphs: [
+          { sourceIndex: 0, text },
+          { sourceIndex: 0, text },
+        ],
+      }),
+    ).toThrow();
+  });
+});
+
 describe("coverLetterEditSchema", () => {
   it("returns field messages for short text", () => {
     const result = coverLetterEditSchema.safeParse({
       title: "Cover letter",
       recipient: "Team",
       opening: "Too short",
-      paragraphs: ["Short"],
+      paragraphs: [{ sourceIndex: 0, text: "Short" }],
       closing: "Thanks",
     });
     expect(result.success).toBe(false);
