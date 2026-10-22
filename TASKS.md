@@ -135,7 +135,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U04 — Notion-style live-preview Markdown editor
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02
 - Intent: one calm writing page, like Notion or Obsidian's Live Preview. The user types Markdown and sees it rendered in the same place, with no separate preview pane. The stored value stays plain canonical Markdown (PRD rule).
 - Decision (user, 2026-10-21): inline live preview chosen over split source|preview and over inline + split toggle.
@@ -191,6 +191,17 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
   - Performance: decorations computed for the visible viewport only. Typing in a 1,000-line file stays smooth (no long tasks > 50ms in a DevTools performance trace).
   - Light and dark themes come from U01 tokens.
 - Verify: `pnpm test` (`live-preview-ranges.test.ts`, `markdown-format.test.ts`), `pnpm typecheck && pnpm build && pnpm check`. Browser at 1440 and 390: type each Notion shortcut, use the slash menu by keyboard only, select with the mouse and bold, toggle a checkbox, Mod-click a link, paste 300 lines, reload with JS disabled and save, confirm DB Markdown equals typed text.
+- Evidence (2026-10-21):
+  - Pure `app/lib/live-preview-ranges.ts` (`livePreviewDecorations`, `activeLinesFor`) over the Lezer GFM tree; 22 tests in `tests/live-preview-ranges.test.ts`: headings (H1–H3 cap), bold/italic/nested/unclosed, inline code, strikethrough, links (safe `http(s)` href only, inside lists), bullets, numbered, task checkboxes with toggle position, quotes, rules, fenced code (never hidden), multi-line active selection, list hanging indent.
+  - `app/lib/markdown-format.ts` gains heading1/heading3, numbered, checklist, quote, italic, code, link, divider, codeblock, inline unwrap (toggle off), block-prefix skipping (bold on "- item" wraps only the text), and `countWords`. 41 format tests.
+  - `app/components/editor/`: `live-preview.ts` (ViewPlugin over visible ranges; replaced markers are atomic ranges; checkbox widget toggles the source), `editor-theme.ts` (serif writing page, 68ch measure, heading scale, themed slash menu), `commands.ts` (keymap: Mod-B/I/E/K, Mod-Alt-1..3, Mod-Shift-7/8/9, Mod-S, Tab/Shift-Tab only inside list items; slash menu with 9 blocks + 4 contribution sections).
+  - `markdown-editor.tsx`: no pane toggle, no text toolbar. Mouse-selection toolbar (Bold, Italic, Code, Link, Heading) scales in from the selection and flips below it near the top edge; hides on scroll, typing, keyboard selection, and blur. Footer: save status, word count, "Insert starter template" on empty files, Shortcuts popover. Pre-hydration: plain serif textarea.
+  - Contribution page uses a writing sheet with a double margin rule (≥640px); Mod-S saves now (autosave immediately, or submits the create form).
+  - Slash menu opens instantly (keyboard-initiated); only the mouse toolbar and popovers animate.
+  - `PRD.md` contributions section updated.
+  - `pnpm test` 298 passed; `typecheck`, `check`, `build` pass.
+  - Browser (1024 wide): headings and bold render without markers; the cursor line shows `- ` and `**`; `/out` → Enter inserted "## Outcomes and metrics" with a bullet; mouse selection showed the toolbar and Bold wrapped the selection (stored Markdown verified through the hidden field).
+  - Not done: a DevTools trace for a 1,000-line file (decorations are limited to the visible ranges); fenced code fences stay visible but dimmed instead of hiding when the cursor leaves the block.
 
 ## U05 — Contributions workspace flow
 

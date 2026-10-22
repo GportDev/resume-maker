@@ -234,3 +234,19 @@ dialog.dialog[open]::backdrop {
     scroll-behavior: auto;
   }
 }
+
+/* Writing sheet: legal-pad double margin rule on wide screens. */
+@media (min-width: 640px) {
+  .writing-sheet {
+    background-image:
+      linear-gradient(var(--color-margin), var(--color-margin)),
+      linear-gradient(var(--color-margin), var(--color-margin));
+    background-size:
+      1px 100%,
+      1px 100%;
+    background-position:
+      3.25rem 0,
+      calc(3.25rem + 3px) 0;
+    background-repeat: no-repeat;
+  }
+}

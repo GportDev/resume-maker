@@ -235,6 +235,7 @@ function ContributionEditor({
   const submittedMarkdownRef = useRef("");
   const submittingRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const navigation = useNavigation();
 
   const markdownDirty = markdown !== savedMarkdown;
@@ -310,6 +311,16 @@ function ContributionEditor({
     ),
   );
 
+  function saveNow() {
+    if (isNew) {
+      formRef.current?.requestSubmit();
+      return;
+    }
+    if (!markdownDirty || autosave.state !== "idle") return;
+    autosavedMarkdownRef.current = markdown;
+    submitAutosave({ intent: "autosave", markdown }, { method: "post" });
+  }
+
   function markSubmitting() {
     submittingRef.current = true;
   }
@@ -381,18 +392,6 @@ function ContributionEditor({
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <p
-            role="status"
-            className={`text-sm ${
-              status.startsWith("Autosave failed")
-                ? "text-danger"
-                : dirty
-                  ? "text-warn"
-                  : "text-ink-2"
-            }`}
-          >
-            {status}
-          </p>
           {experience ? (
             <a
               href={`/contributions/${experience.id}/download`}
@@ -406,6 +405,7 @@ function ContributionEditor({
       </div>
 
       <Form
+        ref={formRef}
         method="post"
         onSubmit={onSave}
         onChange={(event) => {
@@ -530,7 +530,7 @@ function ContributionEditor({
           </label>
         </section>
 
-        <section className="space-y-3 rounded-2xl border border-rule bg-sheet p-6">
+        <section className="writing-sheet space-y-3 rounded-sheet bg-sheet px-5 pt-8 shadow-sheet sm:pr-10 sm:pl-20">
           <MarkdownEditor
             id="markdown"
             name="markdown"
@@ -540,14 +540,28 @@ function ContributionEditor({
             template={contributionTemplate()}
             describedBy={errors.markdown ? "markdown-error" : "markdown-hint"}
             invalid={Boolean(errors.markdown)}
+            onSaveShortcut={saveNow}
+            status={
+              <span
+                className={
+                  status.startsWith("Autosave failed")
+                    ? "text-danger"
+                    : dirty
+                      ? "text-warn"
+                      : "text-ink-3"
+                }
+              >
+                {status}
+              </span>
+            }
           />
           {errors.markdown ? (
             fieldError(errors, "markdown")
           ) : (
-            <p id="markdown-hint" className="text-xs text-ink-3">
+            <p id="markdown-hint" className="sr-only">
               {isNew
-                ? "Save the position once; after that, Markdown changes autosave."
-                : "Markdown changes autosave. Save position to update details."}
+                ? "Create the position once; after that, writing saves automatically."
+                : "Writing saves automatically. Save position to update details."}
             </p>
           )}
 

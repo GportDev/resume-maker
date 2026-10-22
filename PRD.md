@@ -62,8 +62,8 @@ Personalized Resume converts a user's verified work history into a job-specific,
 ### Contributions workspace
 
 - Page lists every position as a Markdown file grouped under its company folder; companies ordered by most recent role, positions by start date descending.
-- Selecting a file opens a Markdown code editor with toolbar (heading, bullet, bold, contribution template), edit/preview toggle, and position metadata.
-- Editor works before JavaScript loads (plain textarea form) and upgrades to a code editor after hydration.
+- Selecting a file opens a Notion-style writing page: Markdown renders in place as you type (headings, emphasis, lists, checklists, quotes, links, code), and raw markers show only on the line being edited. A `/` menu inserts blocks and contribution sections, a toolbar appears over a mouse selection, and keyboard shortcuts cover formatting and save. The stored value stays plain Markdown.
+- Editor works before JavaScript loads (plain textarea form) and upgrades to the live-preview editor after hydration.
 - Changes autosave after a short pause; status shows saved or unsaved; leaving with unsaved changes asks for confirmation.
 - Import one or more `.md` files into a position (append or replace, with confirmation); export each position as `.md`.
 - Company can be renamed or edited; deletion only allowed when it has no positions and requires explicit confirmation.

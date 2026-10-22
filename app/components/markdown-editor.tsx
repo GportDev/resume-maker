@@ -1,35 +1,47 @@
 import type { EditorView } from "@uiw/react-codemirror";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import {
-  applyTextChange,
-  type FormatAction,
-  formatMarkdown,
-  type TextChange,
-} from "../lib/markdown-format";
+  Bold,
+  Code,
+  Heading2,
+  Italic,
+  Keyboard,
+  Link2,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { countWords, type FormatAction } from "../lib/markdown-format";
+import type { SelectionAnchor } from "./codemirror-markdown";
+import { runFormat, shortcutHelp } from "./editor/commands";
+import { Popover } from "./ui/popover";
 
 const CodeMirrorMarkdown = lazy(() => import("./codemirror-markdown"));
 
-type ViewMode = "write" | "split" | "preview";
-
-const toolbarActions: { action: FormatAction; label: string; text: string }[] =
-  [
-    { action: "heading", label: "Toggle heading", text: "H2" },
-    { action: "bullet", label: "Toggle bullet list", text: "• List" },
-    { action: "bold", label: "Bold", text: "B" },
-    {
-      action: "template",
-      label: "Insert contribution template",
-      text: "Template",
-    },
-  ];
-
-const viewModes: { mode: ViewMode; label: string }[] = [
-  { mode: "write", label: "Write" },
-  { mode: "split", label: "Split" },
-  { mode: "preview", label: "Preview" },
+const selectionActions: {
+  action: FormatAction;
+  label: string;
+  Icon: LucideIcon;
+}[] = [
+  { action: "bold", label: "Bold", Icon: Bold },
+  { action: "italic", label: "Italic", Icon: Italic },
+  { action: "code", label: "Inline code", Icon: Code },
+  { action: "link", label: "Link", Icon: Link2 },
+  { action: "heading", label: "Heading", Icon: Heading2 },
 ];
 
+const placeholderText = "Type / for sections, or start writing…";
+
+/**
+ * Notion-style Markdown writing surface: Markdown renders in place, raw
+ * markers show only on the line being edited. Before hydration it is a plain
+ * textarea that submits the same field.
+ */
 export function MarkdownEditor({
   id,
   name,
@@ -39,7 +51,8 @@ export function MarkdownEditor({
   template,
   describedBy,
   invalid,
-  placeholder,
+  status,
+  onSaveShortcut,
 }: {
   id: string;
   name: string;
@@ -49,161 +62,149 @@ export function MarkdownEditor({
   template: string;
   describedBy?: string;
   invalid?: boolean;
-  placeholder?: string;
+  status?: ReactNode;
+  onSaveShortcut?: () => void;
 }) {
   const [hydrated, setHydrated] = useState(false);
-  const [mode, setMode] = useState<ViewMode>("split");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [anchor, setAnchor] = useState<SelectionAnchor>(null);
   const viewRef = useRef<EditorView | null>(null);
   const labelId = `${id}-label`;
+  const words = countWords(value);
 
   useEffect(() => setHydrated(true), []);
 
-  function applyToTextarea(textarea: HTMLTextAreaElement, change: TextChange) {
-    onChange(applyTextChange(textarea.value, change));
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(change.selection.start, change.selection.end);
-    });
-  }
+  // The toolbar is fixed to the viewport; scrolling moves the text under it.
+  useEffect(() => {
+    if (!anchor) return;
+    const hide = () => setAnchor(null);
+    window.addEventListener("scroll", hide, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", hide, { capture: true });
+  }, [anchor]);
 
-  function runAction(action: FormatAction) {
-    if (mode === "preview") setMode("split");
+  const toolbarAbove = anchor ? anchor.top - 44 >= 8 : true;
+
+  function format(action: FormatAction, text = "") {
     const view = viewRef.current;
-    if (view?.dom.isConnected) {
-      const main = view.state.selection.main;
-      const change = formatMarkdown(
-        view.state.doc.toString(),
-        { start: main.from, end: main.to },
-        action,
-        template,
-      );
-      view.dispatch({
-        changes: { from: change.from, to: change.to, insert: change.insert },
-        selection: {
-          anchor: change.selection.start,
-          head: change.selection.end,
-        },
-        scrollIntoView: true,
-      });
-      view.focus();
-      return;
-    }
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    applyToTextarea(
-      textarea,
-      formatMarkdown(
-        textarea.value,
-        { start: textarea.selectionStart, end: textarea.selectionEnd },
-        action,
-        template,
-      ),
-    );
+    if (view?.dom.isConnected) runFormat(view, action, text);
   }
 
   const textarea = (
     <textarea
-      ref={textareaRef}
       id={id}
       name={name}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       aria-describedby={describedBy}
       aria-invalid={invalid || undefined}
-      placeholder={placeholder}
-      className="min-h-96 w-full rounded-xl border border-rule-strong bg-field p-4 font-mono text-sm leading-6 outline-none focus:border-exhibit"
+      placeholder={placeholderText}
+      className="block min-h-[60vh] w-full max-w-[68ch] resize-y bg-transparent font-serif text-[1.0625rem] leading-[1.7] text-ink outline-none placeholder:text-ink-3 placeholder:italic"
     />
   );
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label id={labelId} htmlFor={id} className="text-sm font-medium">
-          {label}
+    <div className="relative">
+      <span id={labelId} className="sr-only">
+        {label}
+      </span>
+      {hydrated ? (
+        <Suspense fallback={textarea}>
+          <CodeMirrorMarkdown
+            name={name}
+            value={value}
+            labelId={labelId}
+            describedBy={describedBy}
+            invalid={invalid}
+            placeholderText={placeholderText}
+            onChange={onChange}
+            onReady={(view) => {
+              viewRef.current = view;
+            }}
+            onSave={() => onSaveShortcut?.()}
+            onSelectionAnchor={setAnchor}
+          />
+        </Suspense>
+      ) : (
+        <label htmlFor={id} className="block">
+          <span className="sr-only">{label}</span>
+          {textarea}
         </label>
-        <fieldset className="flex rounded-lg border border-rule-strong p-0.5">
-          <legend className="sr-only">Editor layout</legend>
-          {viewModes.map((item) => (
-            <button
-              key={item.mode}
-              type="button"
-              aria-pressed={mode === item.mode}
-              onClick={() => setMode(item.mode)}
-              className={`rounded-md px-3 py-1 text-xs ${
-                mode === item.mode
-                  ? "bg-sheet-sunk text-exhibit-deep"
-                  : "text-ink-2 hover:text-ink"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </fieldset>
-      </div>
+      )}
 
-      <div
-        role="toolbar"
-        aria-label="Formatting"
-        aria-controls={id}
-        className="mt-3 flex flex-wrap gap-2"
-      >
-        {toolbarActions.map((item) => (
-          <button
-            key={item.action}
-            type="button"
-            aria-label={item.label}
-            title={item.label}
-            disabled={!hydrated}
-            onClick={() => runAction(item.action)}
-            className={`rounded-lg border border-rule-strong px-3 py-1.5 text-xs hover:border-exhibit ${
-              item.action === "bold" ? "font-bold" : ""
-            }`}
-          >
-            {item.text}
-          </button>
-        ))}
-      </div>
-
-      <div
-        className={`mt-3 grid gap-4 ${mode === "split" ? "xl:grid-cols-2" : ""}`}
-      >
-        <div className={mode === "preview" ? "hidden" : undefined}>
-          {hydrated ? (
-            <Suspense fallback={textarea}>
-              <CodeMirrorMarkdown
-                name={name}
-                value={value}
-                labelId={labelId}
-                describedBy={describedBy}
-                invalid={invalid}
-                onChange={onChange}
-                onReady={(view) => {
-                  viewRef.current = view;
-                }}
-              />
-            </Suspense>
-          ) : (
-            textarea
-          )}
-        </div>
-        <section
-          aria-label="Markdown preview"
-          className={`min-h-96 rounded-xl border border-rule bg-sheet-sunk p-4 ${
-            mode === "write" ? "hidden" : ""
+      {anchor ? (
+        <div
+          role="toolbar"
+          aria-label="Format selection"
+          style={{
+            top: toolbarAbove ? anchor.top - 44 : anchor.bottom + 8,
+            left: anchor.left,
+          }}
+          className={`pop fixed z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-control bg-ink p-1 text-sheet shadow-lifted ${
+            toolbarAbove
+              ? "[--pop-origin:bottom_center]"
+              : "[--pop-origin:top_center]"
           }`}
         >
-          {value.trim() ? (
-            <div className="markdown-preview">
-              <ReactMarkdown>{value}</ReactMarkdown>
-            </div>
-          ) : (
-            <p className="text-sm text-ink-3">
-              Preview appears here. Include outcomes, metrics, tools, ownership,
-              and project scope.
-            </p>
-          )}
-        </section>
+          {selectionActions.map(({ action, label: actionLabel, Icon }) => (
+            <button
+              key={action}
+              type="button"
+              aria-label={actionLabel}
+              title={actionLabel}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                format(action);
+                setAnchor(null);
+              }}
+              className="pressable grid size-8 place-items-center rounded-[4px] hover:bg-sheet/15"
+            >
+              <Icon aria-hidden="true" className="size-4" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="sticky bottom-0 mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-rule bg-sheet/95 py-2.5 text-[0.8125rem] text-ink-3 backdrop-blur-[2px]">
+        <div className="min-w-0" role="status">
+          {status}
+        </div>
+        <span className="tabular" aria-live="off">
+          {words} {words === 1 ? "word" : "words"}
+        </span>
+        {hydrated && !value.trim() ? (
+          <button
+            type="button"
+            onClick={() => format("template", template)}
+            className="font-medium text-exhibit hover:text-exhibit-deep"
+          >
+            Insert starter template
+          </button>
+        ) : null}
+        <div className="ml-auto">
+          <Popover
+            id={`${id}-shortcuts`}
+            align="end"
+            triggerLabel="Keyboard shortcuts"
+            triggerClassName="pressable flex items-center gap-1.5 rounded-[4px] px-1.5 py-1 hover:bg-sheet-sunk hover:text-ink"
+            trigger={
+              <>
+                <Keyboard aria-hidden="true" className="size-4" />
+                Shortcuts
+              </>
+            }
+            className="w-72"
+          >
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 p-2 text-[0.8125rem]">
+              {shortcutHelp.map((item) => (
+                <div key={item.label} className="contents">
+                  <dt className="font-mono text-[0.75rem] whitespace-nowrap text-ink-2">
+                    {item.keys}
+                  </dt>
+                  <dd className="text-ink">{item.label}</dd>
+                </div>
+              ))}
+            </dl>
+          </Popover>
+        </div>
       </div>
     </div>
   );
