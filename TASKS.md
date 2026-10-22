@@ -6,267 +6,350 @@ Allowed values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
 Only one task may be `IN_PROGRESS`. Complete dependencies in order. Update handoff before stopping.
 
-## S01 — Product specifications
+## History
 
-- Status: `DONE`
+S01–S13 (specs through LinkedIn listings) are `DONE`. Their full acceptance criteria and evidence live in git history: `git show 2df43be:TASKS.md`. Still open from S13's handoff: U00 below.
+
+## Why this plan exists
+
+UX review of every route (2026-10-21) found the app usable but generic and heavy:
+
+- **Generic look.** Every page uses the same recipe: `slate-950` background, `cyan-400` accent, Inter, uppercase `tracking-[0.2em]` eyebrow (9 pages), and the same `rounded-2xl border border-slate-800 bg-slate-900` panel (13 files, 37 `rounded-2xl`). Each section has the same visual weight, so nothing leads. The only motion in the app is the dnd-kit transform. No button press feedback, no enter/exit for dialogs or status messages.
+- **Duplicate primitives.** 18 hand-written copies of the primary button class and 3 separate `inputClass` constants. The same destructive pattern (`<details>` + checkbox + red button) appears in 4 places with different wording.
+- **Markdown editor.** (User wants Notion-style inline live preview; see U04.) It uses the stock `@uiw` `theme="dark"`, which clashes with the app palette. The toolbar labels are text (`H2`, `• List`, `B`, `Template`) with no keyboard shortcuts. Split view only goes side by side at ≥1280px; below that, preview stacks under the editor. The editor has a fixed 24rem height. Save status sits in the page header, far from the text. Markdown autosaves but position details need a manual save, so users juggle two save models.
+- **Operate surfaces read like a landing page.** Home opens with a marketing headline. Detail pages are one long always-editable form. Board cards repeat a status select, a Move button, and a Delete disclosure on every card.
+
+Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claims, explained numbers, fast repeat sessions, and clean degradation. Visual decisions belong in `DESIGN.md` (U01), not here.
+
+### Shared rules for every U-task
+
+- Motion rules (Emil Kowalski design-engineering guidance):
+  - Animate only `transform`/`opacity`. Name exact properties; never `transition: all`.
+  - UI motion is ≤ 250ms. Use `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)` for enter/exit and `--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1)` for on-screen movement. Never `ease-in`.
+  - Exits are faster than enters.
+  - No animation on keyboard-initiated or 100+/day actions (shortcuts, toolbar formatting, tab switching).
+  - Pressables get `:active { transform: scale(0.97) }`.
+  - Gate hover effects behind `@media (hover: hover) and (pointer: fine)`.
+  - Honor `prefers-reduced-motion`: keep opacity, drop movement.
+- Progressive enhancement stays: every mutation that works without JavaScript today keeps working.
+- No new copy promising outcomes. Scores keep their heuristic disclaimer.
+- Verify each UI task in the built-in browser at 1440×900 and 390×844, and run `~/.claude/skills/impeccable/scripts/impeccable detect --json <changed files>` once, at the end.
+
+## U00 — Release carryover from S13
+
+- Status: `TODO`
+- Depends on: none (independent of U-tasks; can run any time)
+- Intent: close the S13 handoff items that are not yet verified.
+- Files: none expected; `TASKS.md` evidence only.
+- Acceptance:
+  - `drizzle/0006_job_matches.sql` is applied to the user's remote database **only after explicit user approval in chat**.
+  - Live smoke of `/jobs` with a real `RAPIDAPI_KEY` and of Run match with a real `TYPESAFE_API_KEY`, or a recorded `BLOCKED` with the exact missing key.
+- Verify: `pnpm db:migrate` output against the approved target; one saved LinkedIn listing; one stored job-match row.
+
+## U01 — Visual direction and DESIGN.md
+
+- Status: `TODO`
 - Depends on: none
-- Intent: establish product, engineering, and execution contracts.
-- Files: `PRD.md`, `AGENTS.md`, `TASKS.md`
+- Intent: replace the generic slate/cyan look with a deliberate identity suited to an Operate tool used daily during a job hunt. Write it down so every later task builds against one source.
+- Files: `DESIGN.md`, `.impeccable/design.json` (sidecar, if the skill writes one)
 - Acceptance:
-  - Product scope, flows, non-goals, security, and measurable criteria defined.
-  - Agent workflow includes exact pickup protocol.
-  - Every implementation task below has scope and verification.
-- Verify: review all three files for contradictions and missing task dependencies.
+  - Run `/impeccable shape` → new-work for a redesign. Present 2–3 directions and get the **user's choice in chat** before writing DESIGN.md. The agent must not pick the direction.
+  - DESIGN.md defines:
+    - color tokens for surface tiers, text tiers, accent, and semantic status colors (saved/applied/interviewing/offer/rejected/withdrawn, verified/needs-review/missing), with both themes if dark stays default;
+    - type scale and font pairing (one display or editorial face allowed, one UI face, one mono for Markdown);
+    - spacing and radius scale;
+    - elevation rules: when a surface is a panel and when it is plain page, replacing border-on-everything;
+    - motion tokens (`--ease-out`, `--ease-in-out`, `--duration-press: 160ms`, `--duration-pop: 200ms`, `--duration-dialog: 240ms`);
+    - document-preview styling (resume/cover letter paper) kept ATS-neutral.
+  - Names one signature element that makes the app recognizable (e.g. how scores, evidence citations, or the contribution tree look), grounded in the product's evidence-first positioning.
+- Verify: user approval recorded in this task's evidence; DESIGN.md exists and lists every token U02 needs.
 
-## S02 — Foundation and database
+## U02 — Tokens and shared UI primitives
 
-- Status: `DONE`
-- Depends on: S01
-- Intent: create typed server foundation, schema, migrations, and encrypted credential storage.
-- Files: `package.json`, `.env.example`, `drizzle.config.ts`, `app/lib/env.server.ts`, `app/lib/db.server.ts`, `app/db/*`, `tests/*`
+- Status: `TODO`
+- Depends on: U01
+- Intent: one implementation of each control, so polish happens once and every page inherits it.
+- Files: `app/app.css`, `app/root.tsx` (fonts), new `app/components/ui/*` (`button.tsx`, `field.tsx`, `badge.tsx`, `panel.tsx`, `page-header.tsx`, `confirm-dialog.tsx`, `toast.tsx`), `tests/*`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | 18 inline `rounded-xl bg-cyan-400 px-5 py-3 …` primary buttons | `<Button variant="primary\|secondary\|ghost\|danger" size>` | One place for focus, disabled, pending, and press states |
+  | No `:active` feedback anywhere | `transition: transform 160ms var(--ease-out)`; `:active { scale(0.97) }` | Buttons must confirm the press |
+  | `button:disabled { cursor: wait }` for every disabled button | `cursor: not-allowed` by default; `aria-busy` + spinner only while pending | Disabled ≠ loading |
+  | 3 `inputClass` copies; labels sometimes wrap inputs, sometimes `htmlFor` | `<Field label hint error>` with consistent `aria-describedby` | Consistent error and hint wiring |
+  | `<details>` + checkbox + red button delete in 4 places | `<ConfirmDialog>` on native `<dialog>`; enter `opacity 0→1` + `scale(0.96→1)` 240ms ease-out, exit 150ms; checkbox form kept as no-JS fallback | Destructive intent stays explicit with less page clutter |
+  | "Saved." text persists until next action | `<Toast>` (polite live region), slides from the same edge it exits, CSS transitions not keyframes, timer pauses when tab hidden | Spatially consistent, interruptible feedback |
+  | Eyebrow + h1 hand-written per page | `<PageHeader eyebrow? title meta actions>` | Consistent hierarchy |
+
 - Acceptance:
-  - Dependencies and scripts install with pnpm.
-  - Schema includes Better Auth and product tables with ownership indexes.
-  - User key encryption round-trips and rejects tampering.
-  - Browser code cannot import server secrets.
-- Verify: `pnpm test && pnpm typecheck`
+  - Tokens from DESIGN.md exist in `@theme`. No raw `slate-*`/`cyan-*` utilities remain in the new primitives.
+  - Hover styles are gated by `(hover: hover) and (pointer: fine)`. A `prefers-reduced-motion` block removes transforms and keeps opacity.
+  - Primitives are adopted on at least the board and profile pages (proof). Other pages migrate in their own tasks.
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; browser check at both widths; keyboard-only pass through ConfirmDialog (focus trap, Escape, focus return).
 
-## S03 — Authentication and app shell
+## U03 — App shell and navigation
 
-- Status: `DONE`
-- Depends on: S02
-- Intent: secure all product routes with Better Auth and provide usable account flow.
-- Files: `app/lib/auth*`, `app/routes/auth*`, `app/routes/app-layout.tsx`, `app/routes.ts`
+- Status: `TODO`
+- Depends on: U02
+- Intent: navigation that follows the job-hunt loop and works on a phone.
+- Files: `app/routes/app-layout.tsx`, `app/root.tsx` (ErrorBoundary), `app/components/ui/*`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | 6 flat links + name/email + Sign out in one row; overflows below ~900px, no mobile menu | Primary nav for the loop (Find jobs, Applications, Tailor) and Evidence (Contributions, Profile); account menu holds name, email, AI settings, Sign out; small screens get a sheet or menu button | Fits phone widths; groups by job, not by table |
+  | "Analyze" label for `/` | Rename per U06 outcome (e.g. "Home" or "Tailor") | Label matches what the page does |
+  | No skip link | "Skip to content" link targeting `<main id="main">` | Keyboard users skip the nav on every page |
+  | Root ErrorBoundary says "Oops!" | Plain message, link home, keeps shell styling | Direct copy; error state still navigable |
+
+- Acceptance: nav never wraps or scrolls horizontally at 390px. The active route is visible without color alone. The account menu is keyboard-operable (Escape closes and returns focus). Sign-out pending state is kept.
+- Verify: browser at 390, 768, and 1440; keyboard pass; `pnpm typecheck && pnpm build`.
+
+## U04 — Notion-style live-preview Markdown editor
+
+- Status: `TODO`
+- Depends on: U02
+- Intent: one calm writing page, like Notion or Obsidian's Live Preview. The user types Markdown and sees it rendered in the same place, with no separate preview pane. The stored value stays plain canonical Markdown (PRD rule).
+- Decision (user, 2026-10-21): inline live preview chosen over split source|preview and over inline + split toggle.
+- Files: `app/components/markdown-editor.tsx`, `app/components/codemirror-markdown.tsx`, new `app/components/editor/live-preview.ts` (CodeMirror `ViewPlugin` + decorations), new `app/components/editor/editor-theme.ts`, new `app/components/editor/slash-menu.ts`, new `app/components/editor/selection-toolbar.tsx`, new pure `app/lib/live-preview-ranges.ts`, `app/lib/markdown-format.ts`, `app/app.css`, `package.json` (declare `@codemirror/view`, `@codemirror/state`, `@codemirror/language`, `@codemirror/autocomplete`, `@lezer/markdown` directly; they are already transitive), `PRD.md` (contributions section: replace "edit/preview toggle" with inline live preview), `tests/live-preview-ranges.test.ts`, `tests/markdown-format.test.ts`
+- Target experience:
+
+  ```
+  ┌──────────────────────────────────────────────┐
+  │ Senior Engineer                Saved · 2m ago│  ← page title + status
+  │ Acme · Jan 2022 – now · Current              │  ← properties row (U05)
+  │                                              │
+  │ Context                         (rendered H2)│
+  │ Led payments team of 6 engineers.            │
+  │                                              │
+  │ ## Outcomes|          ← active line shows raw│
+  │ • Cut checkout latency **40%**  (bold shown) │
+  │ • Shipped Stripe migration                   │
+  │                                              │
+  │ /out▸  Outcomes · Tools · Context            │  ← slash menu
+  └──────────────────────────────────────────────┘
+  ```
+
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Raw Markdown editor + separate preview pane (Write/Split/Preview), side by side only ≥1280px | Single surface. Markdown renders inline as you type; syntax markers show only on lines touched by the cursor or selection | Write and see the result at once, with no pane juggling or stacked layout on smaller screens |
+  | Stock `theme="dark"`, mono font, 24rem box with border | Page layout: centered column (~68ch), proportional UI/serif face from DESIGN.md, generous line-height (~1.7), no box border, blank space below the last line clickable to focus. Mono only for inline code and code blocks | Reads like a document, not a code field |
+  | Headings are `##` text | H1–H3 render at a type scale with markers hidden off-line; heading spacing above > below | Structure is visible at a glance |
+  | `- item` shown raw | Bullets render as a `•` widget, numbered lists keep numbers, `- [ ]` renders a clickable checkbox that toggles the source | Lists look like lists; checkboxes still edit Markdown |
+  | `**bold**`, `*italic*`, `` `code` ``, `[text](url)` raw | Markers hidden off-line, text styled; links show text only, Mod-click opens (only `http/https`; others plain text) | Clean reading without losing source fidelity |
+  | Blockquotes, `---`, fenced code raw | Quote gets a left rule, `---` a thin divider widget, fenced code a tinted block with mono text (raw fences visible when cursor inside) | Common blocks covered. Tables and HTML stay raw (out of scope) |
+  | Text toolbar `H2`, `• List`, `B`, `Template` above the editor | Notion-style **slash menu**: typing `/` at line start opens a filtered list (Heading 1–3, Bullet, Numbered, Checklist, Quote, Divider, Code, and sections Context/Contributions/Outcomes/Tools). Plus a **selection toolbar** on mouse text selection: Bold, Italic, Code, Link, Heading | Formatting where the cursor is; no chrome when writing |
+  | No shortcuts | `Mod-b`, `Mod-i`, `Mod-e` (code), `Mod-k` (link), `Mod-Alt-1/2/3` (headings), `Mod-Shift-7/8/9` (numbered/bullet/checklist), `Mod-s` (save now), Markdown auto-continue on Enter, Tab/Shift-Tab indent lists. All reuse `formatMarkdown` | 100+/day actions on the keyboard |
+  | — | Typing shortcuts like Notion: `# ` → heading, `- ` → bullet, `1. ` → numbered, `[] ` → checklist, `> ` → quote, `---` → divider (these are already valid Markdown, so they render immediately) | Muscle memory from Notion works |
+  | Template button inserts whole template anywhere | Empty file shows placeholder "Type / for sections, or start writing…" and an "Insert starter template" ghost button; sections inserted one at a time from the slash menu | No duplicated scaffolding |
+  | Status text in page header | Quiet status top-right of the page ("Saved · 2m ago" / "Saving…" / "Unsaved" / "Couldn't save · Retry") + word count in a footer | Feedback near the writing |
+
+- Motion (Emil rules):
+  - Slash menu and selection toolbar enter at `opacity 0→1` + `scale(0.97→1)` over 150ms `--ease-out`, `transform-origin` at the caret/selection edge. Exit 100ms.
+  - Slash menu opened by typing `/` is keyboard-initiated, so it appears **instantly** (no animation). Only the mouse-selection toolbar animates.
+  - Moving the menu highlight with arrows has no animation.
+  - Revealing raw markers when the cursor enters a line is instant; never animate text reflow.
+  - Checkbox toggle: 120ms opacity on the check mark only.
+  - Reduced motion: no transforms.
 - Acceptance:
-  - Sign-up, sign-in, sign-out work through `/api/auth/*`.
-  - Protected loader redirects unauthenticated user.
-  - Authenticated shell shows navigation and account identity.
-  - Ownership helper never accepts user ID from form input.
-- Verify: auth tests, `pnpm typecheck`
+  - Saved value is byte-identical Markdown to what the user typed. Decorations never write to the document except explicit actions (checkbox toggle, slash insert, format commands).
+  - Pure `livePreviewRanges(markdown, activeLineNumbers)`, built on `@lezer/markdown`, returns hide/replace/style ranges. Unit-tested for every syntax above, nested emphasis, a link inside a list, a cursor on a marker line (no hiding), a multi-line selection (all touched lines raw), and an unclosed `**` (no hiding).
+  - Slash menu: opens only at line start or after whitespace, filters as you type, Enter/Tab inserts, Escape closes and leaves the `/` text. `role="listbox"` with `aria-activedescendant` (CodeMirror autocomplete provides this).
+  - Selection toolbar is reachable without a mouse: every action has a shortcut, and the toolbar is never the only path.
+  - Before hydration: the plain `<textarea>` still renders and submits. The page stays usable without JavaScript (raw Markdown, no preview). `.markdown-preview` CSS is kept for read-only renders elsewhere.
+  - Screen readers: CodeMirror content keeps `aria-labelledby`/`aria-describedby`/`aria-invalid`. Hidden markers are hidden visually, but the text content still reads in order.
+  - Performance: decorations computed for the visible viewport only. Typing in a 1,000-line file stays smooth (no long tasks > 50ms in a DevTools performance trace).
+  - Light and dark themes come from U01 tokens.
+- Verify: `pnpm test` (`live-preview-ranges.test.ts`, `markdown-format.test.ts`), `pnpm typecheck && pnpm build && pnpm check`. Browser at 1440 and 390: type each Notion shortcut, use the slash menu by keyboard only, select with the mouse and bold, toggle a checkbox, Mod-click a link, paste 300 lines, reload with JS disabled and save, confirm DB Markdown equals typed text.
 
-## S04 — Profile and experiences
+## U05 — Contributions workspace flow
 
-- Status: `DONE`
-- Depends on: S03
-- Intent: manage reusable verified experience evidence.
-- Files: `app/routes/profile*`, `app/lib/repositories.server.ts`, `app/components/*`
+- Status: `TODO`
+- Depends on: U04
+- Intent: one save model, less chrome around the text, and gentle guidance toward traceable evidence.
+- Files: `app/routes/contributions.tsx`, `app/routes/contribution-file.tsx`, `app/routes/contribution-company.tsx`, `app/routes/contributions-index.tsx`, `app/lib/contributions.ts`, new pure `app/lib/evidence-lint.ts`, `PRD.md` (contributions section), `tests/*`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Markdown autosaves; company/position/dates need "Save position" | Existing positions autosave details too (validated, debounced, same footer status); manual save only to create a new position | One mental model |
+  | Position details form is a large panel above the editor | Notion-style page header: position as an editable page title, then a properties row (company · start – end · Current) where each property edits in place (select, date input, toggle); autosaves like the text | The file's text is the work; matches U04's page layout |
+  | Delete is a `<details>` block under the form | Overflow menu → ConfirmDialog (U02); no-JS fallback kept | Less clutter; explicit intent |
+  | Import is a label styled as a button | Also accept drag-and-drop of `.md` files onto the editor (drop zone fades in 150ms on dragenter); same append/replace confirmation | Matches how people move files |
+  | Append/Replace confirmation is an inline amber fieldset | ConfirmDialog with the file names | Consistent destructive pattern |
+  | No help writing good evidence | Pure `lintEvidence(markdown)` returns hints: bullets without a number or outcome, missing tools section, very short file, first-person filler. Shown as a quiet checklist in the editor footer, never blocking | Supports "traceable over impressive" without AI calls |
+  | Tree shows folders open, "New position here" and "Company settings" links in every folder | Hover/focus-revealed folder actions (always visible on touch); position count per company; current role marked | Quieter tree that scans faster |
+  | Index page is a dashed box with two buttons | Index shows evidence health: positions, last edited, positions with lint hints, link to the weakest file | Gives returning users a next action |
+
 - Acceptance:
-  - Profile and experience CRUD validate input and enforce owner.
-  - Markdown edit/preview and `.md` import/export work.
-  - Current role disables end date; invalid date ranges fail.
-  - Empty and pending states are accessible.
-- Verify: experience/domain tests, `pnpm typecheck`
+  - PRD contributions section updated for detail autosave.
+  - Leaving with unsaved or in-flight changes still prompts. Autosave failure keeps the text and offers Retry.
+  - `lintEvidence` is unit-tested and deterministic.
+  - Keyboard tree navigation (Arrow/Home/End) is preserved.
+- Verify: `pnpm test && pnpm typecheck && pnpm build`; browser: create position, edit details and text, reload to confirm both persisted, drag-import, delete via dialog, no-JS create and delete.
 
-## S05 — Job analysis
+## U06 — Home as returning-user start
 
-- Status: `DONE`
-- Depends on: S04
-- Intent: analyze job text, produce transparent score, gaps, and resources.
-- Files: `app/lib/ai.server.ts`, `app/lib/analysis.ts`, `app/routes/home.tsx`, `app/routes/analysis.tsx`
+- Status: `TODO`
+- Depends on: U02, U03
+- Intent: home serves the returning user moving many applications forward, not a first-visit pitch.
+- Files: `app/routes/home.tsx`, `app/lib/repositories.server.ts` (owner-scoped summary query if needed), `tests/*`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Hero "Turn your real experience into a focused resume." at text-5xl | Short page header; content leads | Operate surface, not marketing |
+  | 24rem textarea dominates the viewport | Quick-tailor stays, but compact: textarea grows with content; application select beside the button | Keeps the 5-minute path without crowding the page |
+  | "Before you analyze" tips box on every visit | Tips only while the user has no analyses or no positions; otherwise hidden | Repeat sessions skip known advice |
+  | Recent analyses: title + company only | Pipeline snapshot: count per status; "Needs tailoring" (Saved/Applied with no resume); recent analyses with fit score and age | Shows the next action |
+  | First-run state is "0 experiences available" | Setup checklist: profile → first position → first analysis, each linking to its page | Clear activation path |
+
+- Acceptance: all summary queries include the owner condition. Empty, first-run, and busy states are designed. The quick-tailor action and its errors behave as today.
+- Verify: `pnpm test && pnpm typecheck && pnpm build`; browser with a fresh user and a seeded user.
+
+## U07 — Applications board
+
+- Status: `TODO`
+- Depends on: U02
+- Intent: cards you scan, not forms you read.
+- Files: `app/routes/applications-board.tsx`, `app/components/application-board.tsx`, `app/components/application-card.tsx`, `tests/applications.test.ts`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Every card shows a status `<select>`, Move button, and Delete disclosure | Card shows position, company, location/salary, and fit/match. A "⋯" menu holds Move to…, Tailor, Open, and Delete (ConfirmDialog). No-JS: per-card form inside `<noscript>`, or the detail page status field | Cuts card height by about half; actions still reachable |
+  | Status badge on cards already inside a status column | Remove inside columns; keep elsewhere | Redundant |
+  | Dragged item is the in-place card at 60% opacity | dnd-kit `DragOverlay` lifted: `scale(1.02)`, stronger shadow, `cursor: grabbing`; placeholder dashed slot; drop settles in 200ms `--ease-out`; keyboard drags skip the lift animation | Physical feel; clear landing spot |
+  | Column drop target is a faint bg change | Accent outline + tint on the column while over | Clear target |
+  | Filter needs a submit and full reload | Filter cards client-side as you type (data already loaded), URL synced with `replace`; GET form fallback kept | Instant narrowing |
+  | 6 columns × min 16rem always scroll horizontally on laptops | Rejected and Withdrawn collapse into a narrow "Closed" lane that expands on click; counts stay visible | Active pipeline fits on screen |
+  | Fit and match as two text pills | One compact indicator (fit number + match recommendation glyph), with text alternative | Denser, same information |
+
+- Acceptance: drag (pointer and keyboard), screen-reader announcements, optimistic moves, and no-JS status change all still work. A pure filter function is unit-tested.
+- Verify: `pnpm test && pnpm typecheck && pnpm build`; browser: drag with mouse, drag with keyboard, filter, delete, no-JS move at both widths.
+
+## U08 — Application detail
+
+- Status: `TODO`
+- Depends on: U02, U07
+- Intent: a record page that reads first and edits on demand, with Tailor as the obvious next step.
+- Files: `app/routes/application-detail.tsx`, `app/components/job-match-panel.tsx`, `app/components/ui/*`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Whole page is one always-editable form (role, salary, 14-row JD, notes) with Save at the bottom | Read view by default: header (position, company, status switcher, posting link, salary, location) and primary "Tailor" action. Edit details in place per section. New application keeps the full form | Most visits read; edits are rare |
+  | Status change needs editing the form and saving | Status switcher in the header saves immediately (optimistic + toast); no-JS form kept | Most common update becomes one action |
+  | Notes save with the whole form | Notes autosave (debounced, footer status like U04) | Notes get written during calls and interviews |
+  | JD textarea always expanded | JD shown as readable text, collapsed to ~12 lines with "Show all" and "Edit" | Reading ≠ editing |
+  | Delete panel permanently in the sidebar | Overflow menu → ConfirmDialog | Destructive action off the main path |
+  | Aside: three stacked cards (fit, resume, cover letter) | One "Documents" panel: fit score with factor mini-bar, resume and cover letter rows with Edit / PDF, "Tailor again" | Shows one documents set |
+  | Salary: 4-column fieldset with its own h2 | Inline "min – max currency / period" row in the details edit | Less structure for one fact |
+
+- Acceptance: create/edit/delete/status/notes all work with and without JS. The match panel keeps accept/reject overrides. Validation errors still map to fields.
+- Verify: `pnpm typecheck && pnpm build`; browser both widths; no-JS create and edit.
+
+## U09 — Tailor flow and analysis results
+
+- Status: `TODO`
+- Depends on: U02
+- Intent: make the analysis read as an explained number and a clear path to generate.
+- Files: `app/routes/application-tailor.tsx`, `app/routes/analysis-result.tsx`, `app/components/analysis-summary.tsx`, `tests/*`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | "1. Job description" textarea stays fully open after analysis | After analysis, collapse to a summary (title, length, analyzed time, "changed since" flag) with "Edit and re-analyze" | Results become the focus |
+  | Fit score `text-6xl` number + 5 equal factor tiles | Score with one stacked bar showing each factor's share of 100; factor list with value / max and a one-line reason | Explains the number at a glance |
+  | Matched and unmatched keywords in one chip cloud | Two groups: "In your evidence" and "Not found". Each unmatched keyword links to the contributions workspace | Gaps lead to an action |
+  | Positions × keywords table with min-width 36rem | Per-position rows with matched counts and expandable keyword lists; stacks on mobile | No horizontal scroll on phones |
+  | "Writing documents…" button text during a long generation | Pending panel listing the steps (resume → cover letter → saving), elapsed time, and a note that both save together. Disabled re-submit | Long waits feel tracked, not stuck |
+  | Evidence match cards with strength + verification pills | Each match cites its source position (link to the contribution file); verified/unverified in DESIGN.md status colors | Traceability made visible |
+
+- Acceptance: score values and disclaimers unchanged. Generation still all-or-nothing. Unverified matches still excluded and labeled.
+- Verify: `pnpm test && pnpm typecheck && pnpm build`; browser with a seeded analysis at both widths.
+
+## U10 — Resume and cover letter editors
+
+- Status: `TODO`
+- Depends on: U02, U09
+- Intent: edit with a live, trustworthy preview and never download stale content.
+- Files: `app/routes/resume-editor.tsx`, `app/routes/cover-letter-editor.tsx`, `app/lib/resume.ts`, `app/lib/cover-letter.ts`, `tests/resume.test.ts`, `tests/cover-letter.test.ts`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Preview renders saved loader data; edits only appear after save | Preview updates live from form state | WYSIWYG for a document users will send |
+  | "Download PDF" at top downloads the saved version while edits are unsaved | With unsaved changes, Download becomes "Save and download" (or is disabled with a reason); unsaved-changes leave guard | No stale PDFs |
+  | Save button at the end of a long form | Sticky action bar: status, Save, Download | Always reachable |
+  | Bullets are fixed textareas: no add, remove, or reorder | Remove, reorder (buttons + keyboard; drag optional), and restore-from-original per bullet. No free-form "add bullet" without a source position | Editing control without breaking traceability |
+  | Bullet source is invisible | Each bullet shows its source position(s), with a popover of the cited evidence | Traceable claims visible in the editor |
+  | Skills as a comma-separated textarea | Tokenized skill list (add, remove, reorder); form posts the same field | Fewer comma errors |
+  | Preview is a tall white box `min-h-[70rem]` | Paper at true Letter/A4 ratio, scaled to fit the column, with page-break markers | Shows what the PDF will look like |
+
+- Acceptance: PDF still single-column with selectable text. Persisted structure and validation unchanged unless covered by updated tests. Same patterns applied to cover-letter paragraphs (keep each paragraph's citation).
+- Verify: `pnpm test` (incl. `pdf.test.tsx`), `pnpm typecheck && pnpm build`; browser: edit, then download without saving and confirm the PDF contains the edit.
+
+## U11 — Find jobs
+
+- Status: `TODO`
+- Depends on: U02
+- Intent: triage listings faster without spending extra paid searches.
+- Files: `app/routes/job-search.tsx`, `app/lib/job-listings.ts`, `tests/job-listings.test.ts`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Vertical list of large cards; description hidden in `<details>` | On ≥1024px: list on the left and selected listing's description on the right (URL keeps selection; no provider call). On mobile: list then detail | Read and decide without losing your place |
+  | Save buttons look the same before and after | Saved state morphs in place ("On your board · Open · Tailor") with a 200ms crossfade; listing gets a saved marker in the list | State change visible where the action happened |
+  | Search form as stacked fields | Compact single-row filter bar on desktop (keywords, location, posted, remote, Search); stays a GET form | Results get the screen |
+  | No hint whether a listing fits | Investigate a deterministic "evidence overlap" hint from listing text vs. stored skills without a model call. Ship only if it is pure, tested, and labeled a heuristic; otherwise record "not done" with the reason | Faster triage; must not add model/provider cost |
+  | Pagination text links | Same links styled as buttons with result range ("26–50") | Clearer paging |
+
+- Acceptance: no extra aggregator requests (saving still never re-searches with JS on). Listing HTML still never rendered.
+- Verify: `pnpm test && pnpm typecheck && pnpm build`; browser with a fake provider (`JOB_LISTINGS_BASE_URL`) at both widths.
+
+## U12 — Profile, AI settings, company, and auth pages
+
+- Status: `TODO`
+- Depends on: U02, U03
+- Intent: bring the remaining pages up to the shared system, and make the resume header visible where it is edited.
+- Files: `app/routes/profile.tsx`, `app/routes/ai-settings.tsx`, `app/routes/contribution-company.tsx`, `app/components/auth-form.tsx`, `app/routes/sign-in.tsx`, `app/routes/sign-up.tsx`
+- Findings:
+
+  | Before | After | Why |
+  | --- | --- | --- |
+  | Profile is a 2-column form with no hints | Live "resume header" preview beside the form (same paper style as U10); hints for headline and links; inline URL validation | Shows what the inputs produce |
+  | AI settings: provider sections with masked keys | Clear current-state line ("Using your Anthropic key · ••••abcd"); Test shows inline pass/fail with timestamp; Revoke uses ConfirmDialog | Status first, actions second |
+  | Company page delete in a red panel | Overflow → ConfirmDialog; disabled with reason while positions exist | Consistent destructive pattern |
+  | Auth card with `shadow-cyan-950/30` glow, "Welcome back" | Auth uses the U01 identity; one line on what the product does; password visibility toggle; pending state on submit | First impression matches the product |
+
+- Acceptance: no secret or key material shown beyond the last four characters. Auth redirect safety unchanged.
+- Verify: `pnpm test && pnpm typecheck && pnpm build`; browser both widths; sign-up, sign-in, sign-out.
+
+## U13 — Cross-app audit and finish
+
+- Status: `TODO`
+- Depends on: U03–U12
+- Intent: confirm the redesign holds together and nothing regressed.
+- Files: fixes only where findings require; `TASKS.md` evidence
 - Acceptance:
-  - AI output validated before persistence.
-  - Matches cite owned experience IDs.
-  - Score is deterministic and factor breakdown totals correctly.
-  - Missing skills map only to allowlisted learning URLs.
-  - User key is preferred; platform key is fallback.
-- Verify: analysis/credential tests with mocked model, `pnpm typecheck`
-
-## S06 — Resume editor and PDF
-
-- Status: `DONE`
-- Depends on: S05
-- Intent: generate truthful editable resume and selectable-text PDF.
-- Files: `app/lib/resume*`, `app/routes/resume.tsx`, `app/components/resume-pdf.tsx`
-- Acceptance:
-  - Generated claims cite source experiences.
-  - User can edit and persist summary, skills, and bullets.
-  - Preview is one-column and standard-section ATS layout.
-  - PDF download contains selectable text.
-- Verify: resume schema tests, `pnpm typecheck`, manual PDF smoke test.
-
-## S07 — Polish and release verification
-
-- Status: `DONE`
-- Depends on: S06
-- Intent: finish responsive/accessibility states and verify complete flow.
-- Files: all touched files, this handoff
-- Acceptance:
-  - Core flow works from account creation through PDF.
-  - No obvious secret, cross-user, keyboard, or mobile layout issue.
-  - Test, typecheck, and production build pass.
-  - Handoff below records exact evidence and next action.
-- Verify: `pnpm test && pnpm typecheck && pnpm build`
-
-## S08 — Anthropic provider
-
-- Status: `DONE`
-- Depends on: S07
-- Intent: run all reading/rewriting AI tasks through Anthropic (default) or OpenAI with per-provider encrypted BYOK and injectable models.
-- Files: `package.json`, `.env.example`, `app/lib/env.server.ts`, `app/lib/ai-provider.server.ts`, `app/lib/ai.server.ts`, `app/lib/repositories.server.ts`, `app/db/schema.ts`, `drizzle/*`, `app/routes/ai-settings.tsx`, `app/routes/api-key-settings.tsx`, `app/routes/home.tsx`, `app/routes/analysis-result.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
-- Acceptance:
-  - `@ai-sdk/anthropic` installed; `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `AI_DEFAULT_PROVIDER` validated server-side and documented in `.env.example`.
-  - `resolveLanguageModel(userId)` uses preferred provider (user setting, else `AI_DEFAULT_PROVIDER`); user key beats platform key; neither raises `NoAiKeyError` with actionable message.
-  - Credential repository methods require `userId` and `provider`; one key per provider per user.
-  - `user_settings` table stores preferred provider; migration generated.
-  - `analyzeJob`/`generateResume` accept `LanguageModel`; structured output schema failure retried once; second failure throws, nothing returned.
-  - Client sees generic provider errors; server logs only provider, status, and error name.
-  - `/settings/ai` lets user pick provider and test/save/revoke one masked key per provider; `/settings/api-key` redirects there; nav updated.
-- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`
-- Evidence:
-  - `pnpm test`: 29 tests across 7 files pass (`tests/ai-provider.test.ts` precedence/no-key/safe-logging; `tests/ai.test.ts` mock-model retry-once, second failure throws, provider errors not retried).
-  - `pnpm typecheck`, `pnpm build`, `pnpm check` (43 files), `git diff --check` pass.
-  - Local PostgreSQL 16: `pnpm db:migrate` applies `0000` and `0001`; `user_settings` has RLS enabled and provider check constraint.
-  - Dev-server smoke (curl): unauthenticated `/settings/ai` redirects to sign-in; `/settings/api-key` returns 301 to `/settings/ai`; set-provider persists; invalid provider returns 400; short key rejected; bogus Anthropic key rejected by provider (401) and not stored; server log contains only operation/provider/name/status; analysis with no key returns `No Anthropic API key is configured…` (400).
-- Notes:
-  - `ai` bumped to 7.0.127 and `@ai-sdk/openai` to 4.0.83 so all AI SDK packages share `@ai-sdk/provider` 4.0.21; older `ai` failed `tsc` with incompatible `LanguageModelV4`.
-  - `@ai-sdk/anthropic` already strips JSON-schema keywords Anthropic rejects while AI SDK validates against full Zod schema; no relaxed generation schema needed.
-  - Default `ANTHROPIC_MODEL` is `claude-sonnet-5-5`.
-
-## S09 — Contributions workspace
-
-- Status: `DONE`
-- Depends on: S08
-- Intent: edit each position's contributions as a Markdown file inside a company-grouped workspace.
-- Files: `PRD.md`, `package.json`, `app/db/schema.ts`, `drizzle/*`, `app/lib/repositories.server.ts`, `app/lib/contributions.ts`, `app/lib/validation.ts`, `app/components/markdown-editor.tsx`, `app/routes/contributions*.tsx`, `app/routes/contribution-*.tsx`, `app/routes/experience-editor.tsx`, `app/routes/profile.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
-- Acceptance:
-  - `companies` table owned by user with case-insensitive unique name; `experiences.company_id` non-null owner-composite FK that blocks deleting a company with positions (`on delete no action`); migration backfills companies from existing `experiences.company` text and drops that column; RLS enabled and Supabase roles revoked.
-  - Experience queries still return `company` name so analysis/resume code is unchanged; every company/experience query includes owner condition; a foreign `companyId` is rejected.
-  - `groupExperiencesByCompany` (pure) orders companies by most recent role (current roles first) and positions by start date descending; companies without positions still appear.
-  - `/contributions` shows keyboard-navigable company→position tree with `aria-current`; empty state when no companies.
-  - `/contributions/:experienceId` edits metadata and Markdown; textarea works without JavaScript; CodeMirror replaces it after hydration; toolbar inserts heading, bullet, bold, and contribution template; edit/preview toggle.
-  - Autosave via debounced fetcher (intent `autosave`) persists Markdown only; status `role="status"` shows saved/unsaved/error; navigation with unsaved changes asks for confirmation.
-  - Multiple `.md` import appends or replaces with confirmation; `?download=1` export stays (redirects to `/contributions/:experienceId/download`).
-  - `/contributions/companies/:companyId` renames/edits company; delete only when no positions and requires confirmation checkbox.
-  - `/profile/experiences/:id` redirects to `/contributions/:id`; profile links to contributions; nav includes Contributions.
-- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:migrate` on local PostgreSQL with pre-existing experience rows.
-- Evidence:
-  - `pnpm test`: 68 tests across 9 files pass (`tests/contributions.test.ts` grouping/ordering, template, import merge, file name, date label; `tests/markdown-format.test.ts` toolbar transforms; `tests/validation.test.ts` company choice, Markdown, and company schemas).
-  - `pnpm typecheck`, `pnpm build`, `pnpm check` (54 files) pass; `pnpm db:generate` reports no schema changes.
-  - Local PostgreSQL 16, seeded with pre-existing experiences for two users (including `" acme "` vs `"Acme"`): `0002` backfills one company per user per case-insensitive name and links every experience; `0003` drops `experiences.company`; composite FK rejects pointing a position at another user's company; deleting a company with positions fails; user delete still cascades; `companies` RLS enabled. Fresh empty-database `pnpm db:migrate` also applies `0000`–`0003`.
-  - Dev-server smoke (curl, two users): create company 302; case-insensitive duplicate 409; create position with existing company and with new company name 302; tree lists current-role company first; autosave 200 and short Markdown 400; legacy `/profile/experiences/:id?download=1` 301 → `?download=1` 302 → `/contributions/:id/download` 200 `text/markdown` attachment containing autosaved text; other user gets 404 on read, autosave, download, company view, and company delete, and 400 when attaching a position to a foreign company; company delete without confirmation 400, with positions 409, empty 302; invalid ids 404; profile links to `/contributions`.
-  - Browser walkthrough (Chrome): CodeMirror replaces textarea after hydration; bold toolbar wraps selection and preview renders it; create redirects with `aria-current` file highlighted; autosave status goes unsaved → saved and survives reload; short text shows `Autosave failed: …`; leaving with unsaved changes opens confirmation dialog and Stay keeps page; multi-file import append and replace with confirmation persist; write/split/preview toggle; arrow-key tree focus; profile shows summary link only.
-- Notes:
-  - FK uses `on delete no action` instead of `restrict`: same protection for direct company delete, but checked at statement end so user-delete cascade cannot fail on trigger order. Repository also refuses deleting a company with positions.
-  - Migration is split into `0002_companies.sql` (create, backfill, enforce) and `0003_drop_experience_company_text.sql` to avoid drizzle-kit's interactive rename prompt; `0002` is hand-edited and its snapshot matches schema.
-  - Export moved to resource route `contributions/:experienceId/download` (returning a `Response` from a UI route loader is treated as data in React Router 8 and crashed the page); `?download=1` redirects there.
-  - CodeMirror is lazy-loaded (`app/components/codemirror-markdown.tsx`, ~211 kB gzip chunk) only on the editor route.
-
-## S10 — Application board
-
-- Status: `DONE`
-- Depends on: S09
-- Intent: track job applications on a Kanban board with accessible drag-and-drop and a detail page ready for tailored documents and match results.
-- Files: `PRD.md`, `package.json`, `app/db/schema.ts`, `drizzle/*`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/components/application-card.tsx`, `app/components/application-board.tsx`, `app/routes/applications-board.tsx`, `app/routes/application-detail.tsx`, `app/routes/app-layout.tsx`, `app/routes.ts`, `tests/*`
-- Acceptance:
-  - `job_applications` table: owner FK (cascade), `company_name`, `position`, `location`, `job_description`, nullable integer `salary_min`/`salary_max`, `salary_currency` char(3) default `USD`, `salary_period` in `year|month|hour`, `status` in `saved|applied|interviewing|offer|rejected|withdrawn`, double `sort_order`, `source` in `manual|linkedin`, nullable `external_id`/`source_url`, `notes`, nullable `applied_at`, timestamps.
-  - Database checks: salaries non-negative and `salary_min <= salary_max`; enum checks for status, period, source, and currency format. Index `(user_id, status, sort_order)`; partial unique `(user_id, source, external_id) where external_id is not null`. RLS enabled and Supabase roles revoked.
-  - Pure `app/lib/applications.ts`: `applicationStatuses` with labels; `applicationInputSchema` requires company name and position, validates salary order, non-negative integers, ISO 4217-style uppercase currency, period, status, optional `https?` source URL, applied date; `formatSalaryRange` uses `Intl.NumberFormat` and handles min-only, max-only, equal, and empty ranges; `computeSortOrder(before?, after?)` returns midpoint/edge values and `needsRebalance` flags exhausted gaps; `groupApplicationsByStatus` orders cards by `sort_order`.
-  - Repository methods `listApplications(userId, { q })`, `getApplication`, `createApplication` (appends to end of status column), `updateApplication`, `moveApplication(userId, id, status, sortOrder)`, `deleteApplication` all include the owner condition; moving rebalances a column when gaps are exhausted.
-  - `/applications` shows one column per status with per-column and whole-board empty states; `?q=` filters by company, position, or location; action intents `move` (validated status/neighbour ids) and `delete` (requires confirmation); foreign IDs return 404.
-  - Drag-and-drop via dnd-kit with pointer and keyboard sensors and screen-reader announcements; drop submits `intent=move` through a fetcher and shows optimistic placement from `fetcher.formData`; each card has a status `<select>` form that works without JavaScript; columns scroll horizontally on small screens.
-  - `/applications/new` and `/applications/:applicationId` edit all fields (job description textarea, salary min/max/currency/period, status, notes, applied date); detail layout reserves Resume, Cover letter, and Match sections; delete requires confirmation checkbox.
-  - Nav includes Applications.
-- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:migrate` on local PostgreSQL; dev-server smoke of create/move/filter/delete and cross-user 404.
-- Evidence:
-  - `pnpm test`: 114 tests across 10 files pass (`tests/applications.test.ts`: schema defaults, required-field messages, salary parsing/order/bounds, currency, status/period enums, URL scheme, applied date; `formatSalaryRange` full/equal/open-ended/unknown currency; `computeSortOrder`, `needsRebalance`, `planMove` placement/invalid neighbours/rebalance; `groupApplicationsByStatus`; `applyPendingMove`; `parseMoveFormData`).
-  - `pnpm typecheck`, `pnpm build`, `pnpm check` (60 files), `git diff --check` pass; `pnpm db:generate` reports no schema changes.
-  - Local PostgreSQL 16: `pnpm db:migrate` applies `0004_job_applications.sql`; RLS enabled; raw inserts rejected for `salary_min > salary_max`, lowercase currency, unknown status, and duplicate `(user_id, 'linkedin', external_id)`; manual rows without `external_id` coexist.
-  - Dev-server smoke (curl, two users): unauthenticated board redirects to sign-in; create 302; salary order and missing company return 400 with field messages; board renders `$150,000–$180,000/yr` and per-column empty states; neighbour-based move within and across columns, status-only move appends, invalid status 400, stale neighbour 409; detail status change appends to new column; crowded column rebalances to 1024/2048/3072; `?q=lisb` filters; `?q=%` treated literally; other user sees none of the cards and gets 404 on detail, edit, move, and delete, 409 when using a foreign neighbour id; delete without confirmation 400, with confirmation 200 (board) and 302 (detail).
-  - Browser: computer-use walkthrough passed creation, validation, column `+ Add` status preset, card layout, status-select move, filter/clear, delete confirmation, and horizontal scroll at narrow width; its synthetic drag tool sends no intermediate pointer moves, so drags were verified with scripted Chrome (playwright-core, outside repo): mouse drag across columns and within a column, keyboard pick-up/arrow/drop across columns and within a column all submit `intent=move`, update immediately, and persist after reload; no console errors or hydration warnings; live-region announcements report target column and position.
-- Notes:
-  - Moves send neighbour ids (`beforeId`/`afterId`) instead of a client sort order; `placeApplication` recomputes the order inside a locked transaction via pure `planMove` and rebalances when gaps are exhausted. `moveApplication(userId, id, status, sortOrder)` remains the low-level setter.
-  - One route `applications/:applicationId` serves both `new` and existing ids (same pattern as contributions). Creating redirects to the new card's detail page.
-  - Board move/delete actions return 404 data instead of throwing so a fetcher failure does not replace the board with the error boundary.
-
-## S11 — Tailoring + cover letter
-
-- Status: `DONE`
-- Depends on: S08, S10
-- Intent: tailor a resume and a new cover letter to one application's job description, show per-position keyword matches, and save both documents on the application card atomically.
-- Files: `PRD.md`, `app/db/schema.ts`, `drizzle/*`, `app/lib/analysis.ts`, `app/lib/keyword-match.ts`, `app/lib/cover-letter.ts`, `app/lib/applications.ts`, `app/lib/ai.server.ts`, `app/lib/tailoring.server.ts`, `app/lib/repositories.server.ts`, `app/components/analysis-summary.tsx`, `app/components/cover-letter-pdf.tsx`, `app/components/application-card.tsx`, `app/routes/application-tailor.tsx`, `app/routes/application-detail.tsx`, `app/routes/applications-board.tsx`, `app/routes/home.tsx`, `app/routes/analysis-result.tsx`, `app/routes/resume-editor.tsx`, `app/routes/cover-letter-editor.tsx`, `app/routes/cover-letter-pdf.tsx`, `app/routes.ts`, `tests/*`
-- Acceptance:
-  - `job_analyses.application_id` and `resumes.application_id`: nullable FKs to `job_applications` with `on delete set null` and indexes. New `cover_letters` table: owner FK (cascade), nullable `application_id` (set null), `analysis_id` (cascade), `title`, `content` jsonb, timestamps, owner/application/analysis indexes. RLS enabled and Supabase roles revoked.
-  - Pure `matchKeywordsToExperiences(analysis, experiences)` returns, per experience, `{ experienceId, matchedKeywords, matchedRequiredSkills }` plus global `unmatchedKeywords`, using `normalize` exported from `app/lib/analysis.ts`, whole-term matching, and deduplicated keywords.
-  - Pure `coverLetterContentSchema` (`recipient`, `opening`, `bodyParagraphs[{ text, sourceExperienceIds[] }]`, `closing`) requires at least one paragraph, each citing at least one experience; `sanitizeCoverLetterEvidence` drops unowned IDs and uncited paragraphs, failing when none remain; `applyCoverLetterEdits` replaces text and keeps citations.
-  - `generateCoverLetter({ model, profile, experiences, analysis, application })` uses structured output with one retry; system prompt forbids invented evidence and company facts beyond the job description and requires every paragraph to cite experience IDs.
-  - `app/lib/tailoring.server.ts`: `runTailoringAnalysis(userId, applicationId, jobDescription)` saves the job description on the application, analyzes it, sanitizes experience IDs, scores deterministically, and saves the analysis linked to the application. `generateTailoredDocuments(user, applicationId, analysisId)` generates the resume and cover letter in parallel, validates and sanitizes both, then inserts both in one transaction; if either fails, nothing is persisted. Dependencies (repositories, model resolver, logger) are injectable. Foreign or unlinked IDs return not-found.
-  - `/applications/:applicationId/tailor`: job description textarea prefilled from the application; intent `analyze` shows keyword chips, per-position match table, score factors, evidence, and gaps (shared `app/components/analysis-summary.tsx`); intent `generate` creates both documents and redirects to the application detail. Provider failures show a generic error.
-  - `/` is the quick-tailor entry: paste a job description and pick an existing application or create one (position/company from analysis), then redirect to the tailor page.
-  - `/cover-letters/:coverLetterId` edits recipient, opening, paragraphs, and closing with preview; `/cover-letters/:coverLetterId/pdf` downloads a selectable-text PDF (`app/components/cover-letter-pdf.tsx`, resume PDF styles).
-  - Board cards and application detail show the latest fit score, Resume and Cover letter links, and a Tailor action. `/analyses/:analysisId` stays as a read-only legacy view.
-- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:migrate` on local PostgreSQL; dev-server smoke of tailor page, documents on card, cover letter edit/PDF, and cross-user 404.
-- Evidence:
-  - `pnpm test`: 147 tests across 13 files pass (`tests/keyword-match.test.ts`: whole-term matching, dedupe, required skills via cited matches, unmatched keywords; `tests/cover-letter.test.ts`: schema bounds, sanitizer drops foreign IDs and uncited paragraphs, edits keep citations, sender fallback, date format; `tests/tailoring.test.ts`: 14 orchestration cases including not-found, no-experiences, no-key, ai-failed logging, quick tailor new/existing, both documents persisted together, cover letter or resume failure persists nothing, all-foreign citations persist nothing, unlinked analysis, transaction ownership reject; `tests/ai.test.ts`: `generateCoverLetter` structured output, retry, and prompt rules; `tests/pdf.test.tsx`: cover letter PDF has selectable text).
-  - `pnpm typecheck`, `pnpm build`, `pnpm check` (71 files) pass; `pnpm db:generate` reports no schema changes.
-  - Local PostgreSQL 16: `pnpm db:migrate` applies `0005_tailoring_cover_letters.sql`; `cover_letters` RLS enabled; deleting an application keeps its analysis/resume/cover letter with `application_id` null.
-  - Dev-server smoke (curl, two users, fake Anthropic server via `ANTHROPIC_BASE_URL`): tailor page empty state; short job description 400; analyze 302 saves the job description and drops a foreign experience ID; chips show matched and missing keywords; generate 302 to `?tailored=1` with resume and cover letter linked to the application and a paragraph citing only a foreign ID dropped; detail and board card show fit score and links; cover letter edit validates (400 with message) and saves; PDF 200 `application/pdf`; forced cover letter failure returns 502 "Generation failed. Nothing was saved…" with document counts unchanged; other user gets 404 on tailor GET/analyze/generate, cover letter, PDF, resume, analysis, and quick tailor with a foreign application; invalid IDs 404; unauthenticated requests redirect to sign-in; quick tailor creates "position @ company" application plus analysis or reuses an existing one; legacy analysis view has no generate action; logs contain only operation, provider, and error name.
-  - Browser (scripted Chrome via playwright-core, outside repo): home quick tailor → tailor page per-position table (Senior Engineer/Acme matched TypeScript, PostgreSQL, React; Developer/Initech matched Terraform) → generate shows saved status; board card shows Fit, Tailor, Resume, Cover letter; cover letter greeting edit updates preview; editing the job description shows the "changed since" notice; no console errors or hydration warnings.
-- Notes:
-  - `application_id` columns are single-column FKs; ownership of application and analysis is checked inside the insert transactions (`ownsApplication` with `for share`) instead of composite FKs.
-  - The job description is saved on the application before the AI call so it survives a provider failure.
-  - Quick tailor with "new application" creates the application and analysis in one transaction; company falls back to "Company not specified".
-  - `/analyses/:analysisId` is read-only; the old standalone `createResume` path was removed, so documents are only created through `createTailoredDocuments`.
-  - Cover letter sender name/email/contact come from the profile or account at render time, not stored in `content`.
-
-## S12 — Jev job match
-
-- Status: `DONE`
-- Depends on: S10, S11
-- Intent: use TypeSafe Jev typed decisions to verify which stored position demonstrates each job requirement, turn them into a deterministic match result with review flags, and feed only verified evidence into resume and cover letter generation.
-- Files: `PRD.md`, `.env.example`, `app/lib/env.server.ts`, `app/lib/jev.server.ts`, `app/lib/job-match.ts`, `app/lib/job-match.server.ts`, `app/lib/tailoring.server.ts`, `app/lib/ai.server.ts`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/db/schema.ts`, `drizzle/*`, `app/components/job-match-panel.tsx`, `app/components/application-card.tsx`, `app/components/analysis-summary.tsx`, `app/routes/application-detail.tsx`, `app/routes/application-tailor.tsx`, `app/routes/applications-board.tsx`, `tests/*`
-- Acceptance:
-  - Env: optional `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` default `jev-latest`, optional `TYPESAFE_BASE_URL` default `https://api.typesafe.ai`. App boots and tailors without them.
-  - `app/lib/jev.server.ts`: `JevClient.systemOne({ state, questions })` posts to `/v1/systemone` with bearer key and model; Zod validates request and response (`model`, `answers` per question ID with `choice`/`probabilities`/`confidence`, `score`/`confidence`, `noul`; `usage`); answers missing or of the wrong type are rejected; API `noul` is normalized to a `boolean` answer with `probability`. Retries 429/529 up to 3 attempts with bounded exponential backoff honoring `Retry-After`; no retry on 401/422 or other statuses; request timeout. Logs only status, model version, and token usage.
-  - Pure `app/lib/job-match.ts`: `buildMatchQuestions(analysis, experiences)` emits stable IDs `req_<i>`/`pref_<i>` as `choice` questions keyed by experience ID plus `none` (max 255 options), `seniority` (`score`, 4-level rubric), `domainFit` (`boolean`); `buildMatchState` and `chunkExperiences` keep each call under the state token budget (~chars/4) and option limit; `mergeChunkAnswers` keeps the highest-probability position, the lowest `none` probability, the highest seniority, and the highest domain-fit probability; `evaluateMatchPolicy` marks requirements verified (choice ≠ none, p ≥ 0.7, confidence ≥ 0.6), missing (none p ≥ 0.7), else needs review (including missing answers or confidence); `scoreMatch` computes 0–100 (required 70, preferred 15, seniority 15) and recommendation `strong_match | worth_tailoring | weak_match | needs_review` with overrides applied; thresholds and `QUESTION_VERSION` are named constants; `reconcileAnalysisMatches` splits analysis matches into verified and unverified.
-  - `job_matches` table: owner FK (cascade), nullable `application_id` (set null), `analysis_id` (cascade), `model_version`, `question_version`, `answers` jsonb, `result` jsonb, timestamps, owner/application/analysis indexes. RLS enabled and Supabase roles revoked. Repositories require `userId`; insert checks application ownership and analysis link in one transaction; jsonb is Zod-validated on read.
-  - `app/lib/job-match.server.ts`: `runJobMatch(userId, applicationId, analysisId)` returns not-found for foreign or unlinked IDs, not-configured without a key, and a generic failure on client errors (safe diagnostics logged); persists answers and result. `setJobMatchOverride` accepts or rejects only needs-review requirements and recomputes the score.
-  - Tailoring: when Jev is configured, analysis runs the match after saving (match failure does not fail analysis). Generation uses the latest match for the analysis: only verified pairs are sent as matches and as `verifiedEvidence`; without a match, behavior is unchanged.
-  - Application detail: Match section with recommendation, match %, seniority and domain fit, per-requirement chosen position, probability, and review flag; accept/reject for needs-review items; Run match action; heuristic disclaimer. Tailor page flags unverified analysis matches. Board card shows recommendation and match %.
-- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; `pnpm db:generate` reports no changes after the migration.
-- Evidence:
-  - `pnpm test`: 205 tests across 16 files pass. `tests/job-match.test.ts` (28): stable `req_`/`pref_` IDs, `none` option, 255-option guard, empty-input guard, state shape and token estimate, chunking by budget and option limit, merge rules, threshold boundaries (0.7/0.6 inclusive, just-below values, missing answer or confidence → needs review), score weights and recommendations, overrides, schema round trip, reconcile verified/unverified. `tests/jev-client.test.ts` (15): request body and bearer header, noul → boolean, probabilities filtered to criteria, null confidence, Zod rejections (missing/wrong-type answer, choice outside criteria, non-JSON), request validated before fetch, 429 `Retry-After` and 529 backoff then success, `retry-after-ms` capped, no retry on 401/422/500, network error wrapped, logs carry only status/model/usage. `tests/job-match-server.test.ts` (11): run persists answers per chunk and result, not-configured, foreign/unlinked not-found, no-experiences, Jev failure logged and nothing saved, transaction ownership reject, override accept recomputes score, override on verified rejected, foreign/mismatched/invalid stored match not-found, stored JSON validation, generic failure messages. `tests/tailoring.test.ts` (+6): match runs after analysis and quick tailor, match exception keeps the analysis, generation receives only verified pairs and `verifiedEvidence` with the system rule, unverified matches dropped, no match keeps prior prompts.
-  - `pnpm typecheck`, `pnpm build`, `pnpm check` (81 files) pass; `pnpm db:generate` reports no schema changes.
-  - `pnpm db:migrate` not run: no local PostgreSQL in this environment, and the only configured database is the user's remote Neon instance. `drizzle/0006_job_matches.sql` is generated and includes RLS enable plus the `anon`/`authenticated` revoke block.
-- Notes:
-  - Added `TYPESAFE_BASE_URL` (default `https://api.typesafe.ai`) for tests and proxies, and an `updated_at` column so override edits are timestamped.
-  - Jev failures never block analysis or generation; generation falls back to unchanged behavior when no valid match exists for the analysis.
-  - Match recommendation is `needs_review` while any required item is unresolved; accepting a needs-review item requires a chosen position.
-  - Design hook false positives (near-black text on cyan primary buttons) are ignored per file in untracked `.impeccable/config.json` for `app/routes/application-detail.tsx` and `app/routes/application-tailor.tsx`.
-  - Live Jev calls, dev-server smoke, and browser check not exercised: no `TYPESAFE_API_KEY` and no local database.
-
-## S13 — LinkedIn listings
-
-- Status: `DONE`
-- Depends on: S10 (applications with the `(user_id, source, external_id)` unique index); S11 and S12 are optional follow-on actions.
-- Intent: search LinkedIn job listings through a licensed aggregator API behind a pluggable provider, save listings to the board without duplicates, and jump straight into tailoring.
-- Files: `PRD.md`, `.env.example`, `app/lib/env.server.ts`, `app/lib/job-listings.ts`, `app/lib/job-listings.server.ts`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/components/application-card.tsx`, `app/routes.ts`, `app/routes/job-search.tsx`, `app/routes/app-layout.tsx`, `app/routes/applications-board.tsx`, `app/routes/application-detail.tsx`, `tests/*`
-- Acceptance:
-  - Env: `JOB_LISTINGS_PROVIDER` (`fantastic_jobs`, default), optional `RAPIDAPI_KEY`, and `JOB_LISTINGS_BASE_URL` (default `https://linkedin-job-search-api.p.rapidapi.com`, for proxies and smoke tests). App boots without them; `/jobs` shows a not-configured state and never calls a provider.
-  - Pure `app/lib/job-listings.ts`: `JobListing` type; `jobSearchInputSchema` parses URL params (keywords 2–120 chars required, location ≤ 120, `postedWithin` `24h|7d|30d` default `7d`, remote flag, page 1–20 default 1); `htmlToPlainText` strips tags, drops script/style content, keeps paragraph and list breaks, decodes named and numeric entities once; `linkedInJobUrl(id)` returns `https://www.linkedin.com/jobs/view/{id}` only for IDs matching `^\d+$` and throws otherwise; `jobListingSchema` validates listings and `saveListingFormSchema` validates the posted intent plus listing JSON; `listingToApplicationInput(listing)` returns a valid `ApplicationInput` (status `saved`, `sourceUrl` from `linkedInJobUrl`, truncated title/company/location, description, salary) plus origin `{ source: "linkedin", externalId }`, or null when the listing cannot become a valid application.
-  - `app/lib/job-listings.server.ts`: `JobListingProvider.search(input)` returns `{ listings, hasMore }`. `FantasticJobsProvider` calls `GET https://linkedin-job-search-api.p.rapidapi.com/active-jb` with `x-rapidapi-key`/`x-rapidapi-host`, `title`, `location`, `time_frame` (`24h`, `7d`, or `6m` plus `date_posted_gte` for 30 days), `ai_work_arrangement=Remote OK,Remote Solely` when remote, `description_format=html`, `limit=25`, `offset`. Zod validates the array response; rows without a numeric LinkedIn ID (from `linkedin_id` or a `linkedin.com/jobs/view` URL) are dropped; salary maps from `ai_salary_*` only for year/month/hour units, ISO currency, and min ≤ max. 10 s timeout; non-200, timeout, network, and schema failures raise one generic `JobListingProviderError`; logs carry only provider and status.
-  - Repositories: `saveListingApplication(userId, input, externalId)` inserts with `ON CONFLICT DO NOTHING` and returns `{ applicationId, created }`, returning the existing owned row on conflict; `listSavedListingIds(userId, externalIds)` maps saved LinkedIn IDs to application IDs.
-  - `/jobs` (`routes/job-search.tsx`): GET form keeps search in the URL; loader validates and calls the provider only with valid input; results show title, company, location, salary, posted date, and "View on LinkedIn"; listings already saved show "On your board" with a link. Action `save` creates a Saved application or reports "Already on your board" with a link; `save-and-tailor` redirects to `/applications/:id/tailor`. Saving does not re-run the search. Loading, empty, invalid-input, provider-error, and not-configured states.
-  - Board cards and application detail show the LinkedIn badge and a posting link built from the external ID. Nav includes "Find jobs".
-- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; live smoke needs `RAPIDAPI_KEY`.
-- Evidence:
-  - `pnpm test`: 261 tests across 18 files pass. `tests/job-listings.test.ts` (36): `htmlToPlainText` breaks, script/style/comment removal, single-pass entity decoding, invalid code points, bare `<`/`>` text; `linkedInJobUrl` accepts digits and rejects empty, letters, traversal, whitespace, and over-long IDs; search params idle/defaults/all filters and every invalid field; page links; application mapping, truncation, company fallback, bad ID; save form rejects broken JSON, tampered ID, inverted salary, unknown intent, missing listing; UTC posted date. `tests/job-listings-provider.test.ts` (20) with `tests/fixtures/fantastic-jobs-active-jb.json`: keeps 4 of 8 rows (drops duplicate, non-LinkedIn URL, wrong-type, and blank-title rows), full normalization, URL-derived ID, telecommute → Remote, hourly single salary, drops weekly salary/inverted range/bad date/unknown arrangement, non-array rejected; URL params for 24h/remote/page 3 and 30d → `6m` + `date_posted_gte`; RapidAPI headers and timeout signal; `hasMore` only for a full page below page 20; HTTP 401/403/429/500, network error, 20 ms timeout (`TimeoutError` cause), non-JSON and non-array bodies all raise the generic error; logs carry only provider and status (no body, no key); skipped rows log a count; env without key returns no provider.
-  - `pnpm typecheck`, `pnpm build`, `pnpm check` (87 files) pass; `pnpm db:generate` reports no schema changes.
-  - Local smoke (Docker `postgres:16` on a throwaway container, fake aggregator on `JOB_LISTINGS_BASE_URL`, two users, curl): `pnpm db:migrate` applies `0000`–`0006` on a fresh database (this also clears the S12 local-migration gap). `/jobs` idle and invalid input make no provider call; 30-day remote search sends `time_frame=6m`, `date_posted_gte`, `title`, `location`, `ai_work_arrangement`, `description_format=html`, `limit=25`, `offset=0` with RapidAPI headers; results render decoded titles, escaped `<fast>`, no script text, EUR salary, posted date, and links only to `linkedin.com/jobs/view/{id}`. Save creates one `linkedin` row with external ID, posting URL, description, salary; saving again returns the same application with `created: false`; save-and-tailor 302s to the tailor page with the description prefilled; tampered ID 400. Second user sees the listing unsaved, saving it creates their own row, and gets 404 on the first user's card and tailor page. Board card and detail show the LinkedIn badge and posting link. Upstream 500 shows the generic 502 message and logs only `{ provider: 'fantastic_jobs', status: 500 }`; empty result shows the empty state; unauthenticated request redirects to sign-in; a server without `RAPIDAPI_KEY` shows "Job search is not set up on this server." and makes no provider call.
-- Notes:
-  - Saving posts the listing back as hidden JSON and re-validates it with Zod instead of calling the aggregator again, so saving never spends quota. The data is the user's own board entry, equivalent to manual entry, and the posting URL is always rebuilt from the numeric ID.
-  - `shouldRevalidate` skips loader revalidation after same-URL POSTs, so a JavaScript save does not re-run the paid search. Without JavaScript, a save re-renders the page and searches once more.
-  - Fantastic.jobs V4 has no 30-day window; 30 days uses `time_frame=6m` with `date_posted_gte`. Description search is not used, so the `6m` description-search restriction does not apply.
-  - Listings without a LinkedIn job ID are dropped because they cannot be deduplicated or linked safely.
-  - Design hook false positive (near-black text on cyan primary buttons) is ignored per file in untracked `.impeccable/config.json` for `app/routes/applications-board.tsx` and `app/routes/job-search.tsx`.
-  - Browser check not run: installing `playwright-core` outside the repo was blocked by auto-review.
+  - `/impeccable audit` over `app/` with no P0/P1 findings left open (or each recorded with a reason).
+  - Detector run over changed files; findings fixed or ignored with a reason.
+  - Every route checked at 390px and 1440px, keyboard-only, with reduced motion on.
+  - Contrast ≥ 4.5:1 for body text and ≥ 3:1 for UI boundaries in both themes.
+  - No `transition: all`, no `ease-in`, no UI animation > 300ms (`grep` evidence).
+- Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; audit report summary pasted into evidence.
 
 ## Handoff
 
 - Current task: none `IN_PROGRESS`.
-- Previous task: S13 `DONE`.
-- Last completed action: S13 LinkedIn listings implemented (pure listing domain, Fantastic.jobs provider, `/jobs` search with save and save-and-tailor, dedupe, LinkedIn badge and posting links, nav), unit-tested, and curl-smoke-tested against local Postgres and a fake aggregator.
-- Verification: `pnpm test && pnpm typecheck && pnpm build && pnpm check` pass (261 tests, 18 files); `pnpm db:generate` reports no changes; `pnpm db:migrate` applies `0000`–`0006` on a fresh local Postgres 16.
-- Blockers: no live `RAPIDAPI_KEY` or `TYPESAFE_API_KEY`, so real Fantastic.jobs and Jev calls are untested. Migration `0006_job_matches.sql` is not applied to the user's remote Neon database (pending user approval). No browser check for S13.
-- Changed files: `PRD.md`, `TASKS.md`, `.env.example`, `app/lib/env.server.ts`, `app/lib/job-listings.ts`, `app/lib/job-listings.server.ts`, `app/lib/applications.ts`, `app/lib/repositories.server.ts`, `app/components/application-card.tsx`, `app/routes.ts`, `app/routes/job-search.tsx`, `app/routes/app-layout.tsx`, `app/routes/applications-board.tsx`, `app/routes/application-detail.tsx`, `tests/job-listings.test.ts`, `tests/job-listings-provider.test.ts`, `tests/fixtures/fantastic-jobs-active-jb.json`.
-- Next task: S14 — Release integration (not yet in this file).
-- First next action: add `S14 — Release integration` above `## Handoff` covering merging the stacked branches (`cursor/jev-job-match-c985`, then `cursor/linkedin-job-listings-c985`) into `main`, applying `0006_job_matches.sql` to the target database after user approval, and live smoke of `/jobs` with `RAPIDAPI_KEY` and Run match with `TYPESAFE_API_KEY`; then start with `gh pr create` for `cursor/jev-job-match-c985`.
+- Last completed action: replaced the S-series task list with the U-series UX plan above, based on a review of every route and the editor components. `PRODUCT.md` was created by `/impeccable init` in the same session. Then rewrote U04 to the user's choice: Notion-style inline live-preview editor (no separate preview pane), and aligned U05's position header with it. No source code changed.
+- Verification: documentation only; no commands needed. Prior state (S13) passed `pnpm test && pnpm typecheck && pnpm build && pnpm check` (261 tests).
+- Blockers: U01 needs the user to choose a visual direction. U00 needs user approval before touching the remote database.
+- Changed files: `TASKS.md`, `PRODUCT.md`.
+- Next task: U01 — Visual direction and DESIGN.md.
+- First next action: run `/impeccable shape app shell redesign` (new-work, redesign mode). Read `PRODUCT.md` and this file's "Why this plan exists" section, then present 2–3 directions to the user before writing `DESIGN.md`.
