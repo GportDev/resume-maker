@@ -53,7 +53,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U01 — Visual direction and DESIGN.md
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: none
 - Intent: replace the generic slate/cyan look with a deliberate identity suited to an Operate tool used daily during a job hunt. Write it down so every later task builds against one source.
 - Files: `DESIGN.md`, `.impeccable/design.json` (sidecar, if the skill writes one)
@@ -68,6 +68,12 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
     - document-preview styling (resume/cover letter paper) kept ATS-neutral.
   - Names one signature element that makes the app recognizable (e.g. how scores, evidence citations, or the contribution tree look), grounded in the product's evidence-first positioning.
 - Verify: user approval recorded in this task's evidence; DESIGN.md exists and lists every token U02 needs.
+- Evidence (2026-10-21):
+  - Direction round served on the impeccable decision page (seed `7800247e`; roll degraded, so there were no challengers). Options: Herbarium Sheet (assigned), Exhibit Binder (pick), and the category standard. **User chose Exhibit Binder**, code-led (no image generation available).
+  - Direction contract written to `.impeccable/surfaces/app-routes-app-layout-tsx.md` (all six blocks plus FINISH; verified by reading it back).
+  - `DESIGN.md` defines board/sheet/ink/rule neutrals, exhibit blue, manila, margin red, status and verification inks; Libre Franklin / Source Serif 4 / JetBrains Mono; radius, spacing, shadow, and motion tokens; signature components: index tabs, stamps, and "Ex. N" citation chips. Light only; dark deferred.
+  - Contrast checked: ink-3 on board and sheet ≥ 4.5:1, exhibit on sheet 9.5:1, white on exhibit 9.8:1, status inks on their tints ≥ 4.97:1, rule-strong control border 3.4:1.
+  - Note: the impeccable flow normally writes DESIGN.md at finish. It is written now so U02 has tokens; U13 refreshes it from the built result and adds `.impeccable/design.json`.
 
 ## U02 — Tokens and shared UI primitives
 
