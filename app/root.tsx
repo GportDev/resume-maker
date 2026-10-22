@@ -19,7 +19,7 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Libre+Franklin:ital,wght@0,400..800;1,400..600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..600&display=swap",
   },
 ];
 
@@ -63,13 +63,13 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   return (
     <main className="container mx-auto px-4 py-20">
-      <p className="text-sm font-semibold uppercase tracking-wider text-cyan-400">
+      <p className="text-sm font-semibold uppercase tracking-wider text-exhibit">
         Resume Fit
       </p>
       <h1 className="mt-3 text-4xl font-semibold">{message}</h1>
-      <p className="mt-3 text-slate-400">{details}</p>
+      <p className="mt-3 text-ink-2">{details}</p>
       {stack && (
-        <pre className="mt-6 w-full overflow-x-auto rounded-xl bg-slate-900 p-4 text-xs">
+        <pre className="mt-6 w-full overflow-x-auto rounded-xl bg-sheet p-4 text-xs">
           <code>{stack}</code>
         </pre>
       )}

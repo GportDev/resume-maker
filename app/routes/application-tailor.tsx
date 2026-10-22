@@ -194,21 +194,21 @@ export default function ApplicationTailor({
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <Link
         to={`/applications/${application.id}`}
-        className="text-sm text-cyan-400 hover:text-cyan-300"
+        className="text-sm text-exhibit hover:text-exhibit-deep"
       >
         ← Back to application
       </Link>
       <div className="mt-5">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
           Tailor
         </p>
         <h1 className="mt-2 text-3xl font-semibold">{application.position}</h1>
-        <p className="mt-1 text-slate-400">{application.companyName}</p>
+        <p className="mt-1 text-ink-2">{application.companyName}</p>
       </div>
 
       <Form
         method="post"
-        className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6"
+        className="mt-8 rounded-2xl border border-rule bg-sheet p-6"
       >
         <h2 className="text-xl font-semibold">1. Job description</h2>
         <label
@@ -217,7 +217,7 @@ export default function ApplicationTailor({
         >
           Job description
         </label>
-        <p id="jobDescription-hint" className="mt-1 text-xs text-slate-500">
+        <p id="jobDescription-hint" className="mt-1 text-xs text-ink-3">
           Saved on the application when you analyze. Use the full posting,
           including requirements.
         </p>
@@ -235,20 +235,20 @@ export default function ApplicationTailor({
               : "jobDescription-hint"
           }
           aria-invalid={analyzeError ? true : undefined}
-          className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-950 p-4 font-mono text-sm leading-6 outline-none focus:border-cyan-400"
+          className="mt-3 w-full rounded-xl border border-rule-strong bg-field p-4 font-mono text-sm leading-6 outline-none focus:border-exhibit"
           placeholder="Paste the complete role description here…"
         />
         {analyzeError ? (
           <p
             id="analyze-error"
-            className="mt-3 text-sm text-red-300"
+            className="mt-3 text-sm text-danger"
             role="alert"
           >
             {analyzeError}
           </p>
         ) : null}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink-3">
             {positions.length} position{positions.length === 1 ? "" : "s"} to
             match
             {!positions.length ? (
@@ -256,7 +256,7 @@ export default function ApplicationTailor({
                 {" · "}
                 <Link
                   to="/contributions"
-                  className="text-cyan-400 hover:text-cyan-300"
+                  className="text-exhibit hover:text-exhibit-deep"
                 >
                   Add experience first
                 </Link>
@@ -268,7 +268,7 @@ export default function ApplicationTailor({
             name="intent"
             value="analyze"
             disabled={busy}
-            className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+            className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
           >
             {pendingIntent === "analyze"
               ? "Analyzing…"
@@ -293,7 +293,7 @@ export default function ApplicationTailor({
                   name="intent"
                   value="generate"
                   disabled={busy}
-                  className="w-full rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+                  className="w-full rounded-xl bg-exhibit px-4 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
                 >
                   {pendingIntent === "generate"
                     ? "Writing documents…"
@@ -301,13 +301,13 @@ export default function ApplicationTailor({
                 </button>
               </Form>
               {latest.jobMatch ? (
-                <div className="mt-4 text-xs leading-5 text-slate-500">
+                <div className="mt-4 text-xs leading-5 text-ink-3">
                   <MatchBadge match={latest.jobMatch} />
                   <p className="mt-2">
                     Documents use only matches verified by the job match.{" "}
                     <Link
                       to={`/applications/${application.id}`}
-                      className="text-cyan-400 hover:text-cyan-300"
+                      className="text-exhibit hover:text-exhibit-deep"
                     >
                       Review match
                     </Link>
@@ -315,13 +315,13 @@ export default function ApplicationTailor({
                 </div>
               ) : null}
               {hasDocuments ? (
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-ink-3">
                   Generating again saves new versions. The card shows the
                   latest.
                 </p>
               ) : null}
               {generateError ? (
-                <p className="mt-3 text-sm text-red-300" role="alert">
+                <p className="mt-3 text-sm text-danger" role="alert">
                   {generateError}
                 </p>
               ) : null}
@@ -331,7 +331,7 @@ export default function ApplicationTailor({
             <h2 id="analysis-heading" className="text-xl font-semibold">
               2. Review matches and gaps
             </h2>
-            <p className="mt-1 mb-6 text-sm text-slate-500">
+            <p className="mt-1 mb-6 text-sm text-ink-3">
               Analyzed {formatDateTime(latest.createdAt)} UTC
               {latest.jobDescriptionChanged
                 ? ". The job description changed since; analyze again to update."
@@ -347,7 +347,7 @@ export default function ApplicationTailor({
           </div>
         </section>
       ) : (
-        <p className="mt-8 rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
+        <p className="mt-8 rounded-2xl border border-dashed border-rule-strong p-8 text-center text-sm text-ink-2">
           Analyze the job description to see keyword matches for each position
           before generating documents.
         </p>

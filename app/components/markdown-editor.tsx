@@ -112,7 +112,7 @@ export function MarkdownEditor({
       aria-describedby={describedBy}
       aria-invalid={invalid || undefined}
       placeholder={placeholder}
-      className="min-h-96 w-full rounded-xl border border-slate-700 bg-slate-950 p-4 font-mono text-sm leading-6 outline-none focus:border-cyan-400"
+      className="min-h-96 w-full rounded-xl border border-rule-strong bg-field p-4 font-mono text-sm leading-6 outline-none focus:border-exhibit"
     />
   );
 
@@ -122,7 +122,7 @@ export function MarkdownEditor({
         <label id={labelId} htmlFor={id} className="text-sm font-medium">
           {label}
         </label>
-        <fieldset className="flex rounded-lg border border-slate-700 p-0.5">
+        <fieldset className="flex rounded-lg border border-rule-strong p-0.5">
           <legend className="sr-only">Editor layout</legend>
           {viewModes.map((item) => (
             <button
@@ -132,8 +132,8 @@ export function MarkdownEditor({
               onClick={() => setMode(item.mode)}
               className={`rounded-md px-3 py-1 text-xs ${
                 mode === item.mode
-                  ? "bg-slate-800 text-cyan-300"
-                  : "text-slate-400 hover:text-slate-100"
+                  ? "bg-sheet-sunk text-exhibit-deep"
+                  : "text-ink-2 hover:text-ink"
               }`}
             >
               {item.label}
@@ -156,7 +156,7 @@ export function MarkdownEditor({
             title={item.label}
             disabled={!hydrated}
             onClick={() => runAction(item.action)}
-            className={`rounded-lg border border-slate-700 px-3 py-1.5 text-xs hover:border-cyan-400 ${
+            className={`rounded-lg border border-rule-strong px-3 py-1.5 text-xs hover:border-exhibit ${
               item.action === "bold" ? "font-bold" : ""
             }`}
           >
@@ -189,7 +189,7 @@ export function MarkdownEditor({
         </div>
         <section
           aria-label="Markdown preview"
-          className={`min-h-96 rounded-xl border border-slate-800 bg-slate-950/60 p-4 ${
+          className={`min-h-96 rounded-xl border border-rule bg-sheet-sunk p-4 ${
             mode === "write" ? "hidden" : ""
           }`}
         >
@@ -198,7 +198,7 @@ export function MarkdownEditor({
               <ReactMarkdown>{value}</ReactMarkdown>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-3">
               Preview appears here. Include outcomes, metrics, tools, ownership,
               and project scope.
             </p>

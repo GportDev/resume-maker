@@ -103,20 +103,20 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
+      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
         Quick tailor
       </p>
       <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
         Turn your real experience into a focused resume.
       </h1>
-      <p className="mt-4 max-w-2xl text-lg text-slate-400">
+      <p className="mt-4 max-w-2xl text-lg text-ink-2">
         Paste a job description to see which positions match its keywords, then
         write a tailored resume and cover letter saved on the application.
       </p>
       <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Form
           method="post"
-          className="rounded-2xl border border-slate-800 bg-slate-900 p-6"
+          className="rounded-2xl border border-rule bg-sheet p-6"
         >
           <label htmlFor="jobDescription" className="text-sm font-medium">
             Job description
@@ -129,7 +129,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             required
             aria-invalid={actionData?.error ? true : undefined}
             aria-describedby={actionData?.error ? "home-error" : undefined}
-            className="mt-3 min-h-[24rem] w-full rounded-xl border border-slate-700 bg-slate-950 p-4 leading-7 outline-none focus:border-cyan-400"
+            className="mt-3 min-h-[24rem] w-full rounded-xl border border-rule-strong bg-field p-4 leading-7 outline-none focus:border-exhibit"
             placeholder="Paste the complete role description here…"
           />
           <label
@@ -143,7 +143,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             name="applicationId"
             defaultValue={selectedApplication}
             aria-describedby="applicationId-hint"
-            className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
           >
             <option value={newApplication}>
               Create a new application from this job
@@ -155,7 +155,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
               </option>
             ))}
           </select>
-          <p id="applicationId-hint" className="mt-1 text-xs text-slate-500">
+          <p id="applicationId-hint" className="mt-1 text-xs text-ink-3">
             New applications take position and company from the analysis and
             start in Saved. Choosing an existing one replaces its job
             description.
@@ -163,21 +163,21 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           {actionData?.error ? (
             <p
               id="home-error"
-              className="mt-3 text-sm text-red-300"
+              className="mt-3 text-sm text-danger"
               role="alert"
             >
               {actionData.error}
             </p>
           ) : null}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-3">
               {experienceCount} experience
               {experienceCount === 1 ? "" : "s"} available
             </p>
             <button
               type="submit"
               disabled={isAnalyzing}
-              className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+              className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
             >
               {isAnalyzing ? "Analyzing…" : "Analyze job"}
             </button>
@@ -185,9 +185,9 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
         </Form>
 
         <aside>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <div className="rounded-2xl border border-rule bg-sheet p-5">
             <h2 className="font-semibold">Before you analyze</h2>
-            <ul className="mt-4 space-y-3 text-sm text-slate-400">
+            <ul className="mt-4 space-y-3 text-sm text-ink-2">
               <li>Use complete job text, including requirements.</li>
               <li>Keep experience evidence factual and specific.</li>
               <li>Score is a fit heuristic, not hiring probability.</li>
@@ -195,7 +195,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             {!experienceCount ? (
               <Link
                 to="/contributions"
-                className="mt-5 inline-block text-sm font-semibold text-cyan-400"
+                className="mt-5 inline-block text-sm font-semibold text-exhibit"
               >
                 Add experience first
               </Link>
@@ -213,16 +213,16 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
                       ? `/applications/${analysis.applicationId}/tailor`
                       : `/analyses/${analysis.id}`
                   }
-                  className="block rounded-xl border border-slate-800 bg-slate-900 p-4 hover:border-slate-600"
+                  className="block rounded-xl border border-rule bg-sheet p-4 hover:border-ink-3"
                 >
                   <p className="font-medium">{analysis.jobTitle}</p>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-ink-3">
                     {analysis.companyName || "Company not specified"}
                   </p>
                 </Link>
               ))}
               {!recentAnalyses.length ? (
-                <p className="text-sm text-slate-500">No analyses yet.</p>
+                <p className="text-sm text-ink-3">No analyses yet.</p>
               ) : null}
             </div>
           </section>

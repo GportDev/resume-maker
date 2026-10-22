@@ -51,7 +51,7 @@ export default function CodeMirrorMarkdown({
           highlightActiveLine: false,
           highlightActiveLineGutter: false,
         }}
-        className="overflow-hidden rounded-xl border border-slate-700 text-sm"
+        className="overflow-hidden rounded-xl border border-rule-strong text-sm"
       />
     </>
   );

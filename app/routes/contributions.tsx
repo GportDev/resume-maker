@@ -69,8 +69,8 @@ function moveTreeFocus(event: KeyboardEvent<HTMLElement>) {
 const fileLinkClass = ({ isActive }: { isActive: boolean }) =>
   `block rounded-lg px-3 py-2 text-sm ${
     isActive
-      ? "bg-slate-800 text-cyan-300"
-      : "text-slate-300 hover:bg-slate-900 hover:text-slate-100"
+      ? "bg-sheet-sunk text-exhibit-deep"
+      : "text-ink-2 hover:bg-sheet-sunk hover:text-ink"
   }`;
 
 export default function Contributions({ loaderData }: Route.ComponentProps) {
@@ -80,7 +80,7 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
     <main className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <aside className="space-y-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
             Evidence library
           </p>
           <h1 className="mt-2 text-2xl font-semibold">Contributions</h1>
@@ -88,13 +88,13 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
         <div className="flex flex-wrap gap-2">
           <Link
             to="/contributions/new"
-            className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+            className="rounded-lg bg-exhibit px-3 py-2 text-sm font-semibold text-sheet hover:bg-exhibit-deep"
           >
             New position
           </Link>
           <Link
             to="/contributions/companies/new"
-            className="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400"
+            className="rounded-lg border border-rule-strong px-3 py-2 text-sm hover:border-exhibit"
           >
             New company
           </Link>
@@ -110,7 +110,7 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
               <details
                 key={folder.id}
                 open
-                className="rounded-xl border border-slate-800 bg-slate-900/60 p-2"
+                className="rounded-xl border border-rule bg-sheet-sunk p-2"
               >
                 <summary
                   data-tree-item
@@ -118,7 +118,7 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
                 >
                   {folder.name}
                   {folder.hasCurrentRole ? (
-                    <span className="ml-2 rounded bg-emerald-950 px-1.5 py-0.5 text-xs font-normal text-emerald-300">
+                    <span className="ml-2 rounded bg-ok-tint px-1.5 py-0.5 text-xs font-normal text-ok">
                       Current
                     </span>
                   ) : null}
@@ -134,14 +134,14 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
                         <span className="block font-medium">
                           {position.position}
                         </span>
-                        <span className="block text-xs text-slate-500">
+                        <span className="block text-xs text-ink-3">
                           {position.dates}
                         </span>
                       </NavLink>
                     </li>
                   ))}
                   {folder.positions.length === 0 ? (
-                    <li className="px-3 py-2 text-xs text-slate-500">
+                    <li className="px-3 py-2 text-xs text-ink-3">
                       No positions yet.
                     </li>
                   ) : null}
@@ -150,7 +150,7 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
                   <Link
                     data-tree-item
                     to={`/contributions/new?companyId=${folder.id}`}
-                    className="text-cyan-400 hover:text-cyan-300"
+                    className="text-exhibit hover:text-exhibit-deep"
                   >
                     New position here
                   </Link>
@@ -159,8 +159,8 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
                     to={`/contributions/companies/${folder.id}`}
                     className={({ isActive }) =>
                       isActive
-                        ? "text-cyan-300"
-                        : "text-slate-400 hover:text-slate-100"
+                        ? "text-exhibit-deep"
+                        : "text-ink-2 hover:text-ink"
                     }
                   >
                     Company settings
@@ -170,16 +170,16 @@ export default function Contributions({ loaderData }: Route.ComponentProps) {
             ))}
           </nav>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-700 p-5 text-sm">
+          <div className="rounded-xl border border-dashed border-rule-strong p-5 text-sm">
             <p className="font-medium">No companies yet.</p>
-            <p className="mt-2 text-slate-500">
+            <p className="mt-2 text-ink-3">
               Add a company, then write one contribution file per position you
               held there.
             </p>
           </div>
         )}
         {folders.length ? (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-3">
             Arrow keys, Home, and End move between files.
           </p>
         ) : null}

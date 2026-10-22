@@ -202,7 +202,7 @@ export default function ContributionFile({
 
 function fieldError(errors: Record<string, string>, name: string) {
   return errors[name] ? (
-    <p id={`${name}-error`} className="mt-1 text-xs text-red-300">
+    <p id={`${name}-error`} className="mt-1 text-xs text-danger">
       {errors[name]}
     </p>
   ) : null;
@@ -373,7 +373,7 @@ function ContributionEditor({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ink-2">
             {experience ? experience.company : "New contribution file"}
           </p>
           <h2 className="mt-1 text-2xl font-semibold">
@@ -385,10 +385,10 @@ function ContributionEditor({
             role="status"
             className={`text-sm ${
               status.startsWith("Autosave failed")
-                ? "text-red-300"
+                ? "text-danger"
                 : dirty
-                  ? "text-amber-300"
-                  : "text-slate-400"
+                  ? "text-warn"
+                  : "text-ink-2"
             }`}
           >
             {status}
@@ -397,7 +397,7 @@ function ContributionEditor({
             <a
               href={`/contributions/${experience.id}/download`}
               download
-              className="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400"
+              className="rounded-lg border border-rule-strong px-3 py-2 text-sm hover:border-exhibit"
             >
               Export saved Markdown
             </a>
@@ -422,7 +422,7 @@ function ContributionEditor({
         <section
           data-position-details
           aria-label="Position details"
-          className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:grid-cols-2"
+          className="grid gap-5 rounded-2xl border border-rule bg-sheet p-6 sm:grid-cols-2"
         >
           <div>
             <label htmlFor="companyId" className="block text-sm font-medium">
@@ -437,7 +437,7 @@ function ContributionEditor({
               aria-describedby={
                 errors.companyId ? "companyId-error" : undefined
               }
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
             >
               {companies.map((company) => (
                 <option key={company.id} value={company.id}>
@@ -461,12 +461,9 @@ function ContributionEditor({
                 name="newCompanyName"
                 maxLength={160}
                 aria-describedby="newCompanyName-hint"
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
               />
-              <p
-                id="newCompanyName-hint"
-                className="mt-1 text-xs text-slate-500"
-              >
+              <p id="newCompanyName-hint" className="mt-1 text-xs text-ink-3">
                 Used when “New company…” is selected.
               </p>
             </div>
@@ -483,7 +480,7 @@ function ContributionEditor({
               maxLength={160}
               aria-invalid={errors.position ? true : undefined}
               aria-describedby={errors.position ? "position-error" : undefined}
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
             />
             {fieldError(errors, "position")}
           </div>
@@ -501,7 +498,7 @@ function ContributionEditor({
               aria-describedby={
                 errors.startDate ? "startDate-error" : undefined
               }
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3"
             />
             {fieldError(errors, "startDate")}
           </div>
@@ -517,7 +514,7 @@ function ContributionEditor({
               disabled={hydrated && isCurrent}
               aria-invalid={errors.endDate ? true : undefined}
               aria-describedby={errors.endDate ? "endDate-error" : undefined}
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 disabled:opacity-40"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 disabled:opacity-40"
             />
             {fieldError(errors, "endDate")}
           </div>
@@ -527,13 +524,13 @@ function ContributionEditor({
               type="checkbox"
               checked={isCurrent}
               onChange={(event) => setIsCurrent(event.target.checked)}
-              className="size-4 accent-cyan-400"
+              className="size-4 accent-exhibit"
             />
             I currently work here
           </label>
         </section>
 
-        <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <section className="space-y-3 rounded-2xl border border-rule bg-sheet p-6">
           <MarkdownEditor
             id="markdown"
             name="markdown"
@@ -547,7 +544,7 @@ function ContributionEditor({
           {errors.markdown ? (
             fieldError(errors, "markdown")
           ) : (
-            <p id="markdown-hint" className="text-xs text-slate-500">
+            <p id="markdown-hint" className="text-xs text-ink-3">
               {isNew
                 ? "Save the position once; after that, Markdown changes autosave."
                 : "Markdown changes autosave. Save position to update details."}
@@ -555,7 +552,7 @@ function ContributionEditor({
           )}
 
           <div className="flex flex-wrap items-center gap-3">
-            <label className="cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-xs hover:border-cyan-400 focus-within:outline-2 focus-within:outline-cyan-400">
+            <label className="cursor-pointer rounded-lg border border-rule-strong px-3 py-2 text-xs hover:border-exhibit focus-within:outline-2 focus-within:outline-exhibit">
               Import .md files
               <input
                 className="sr-only"
@@ -566,18 +563,18 @@ function ContributionEditor({
               />
             </label>
             {importError ? (
-              <p role="alert" className="text-xs text-red-300">
+              <p role="alert" className="text-xs text-danger">
                 {importError}
               </p>
             ) : null}
           </div>
 
           {pendingImport ? (
-            <fieldset className="rounded-xl border border-amber-800 bg-amber-950/30 p-4">
+            <fieldset className="rounded-xl border border-warn/50 bg-warn-tint p-4">
               <legend className="px-1 text-sm font-medium">
                 Import {pendingImport.names.join(", ")}?
               </legend>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-ink-2">
                 Append adds the files after your current text. Replace discards
                 the current text in the editor.
               </p>
@@ -585,21 +582,21 @@ function ContributionEditor({
                 <button
                   type="button"
                   onClick={() => confirmImport("append")}
-                  className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-white"
+                  className="rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-sheet hover:bg-ink-2"
                 >
                   Append
                 </button>
                 <button
                   type="button"
                   onClick={() => confirmImport("replace")}
-                  className="rounded-lg border border-amber-700 px-3 py-1.5 text-xs text-amber-200 hover:border-amber-500"
+                  className="rounded-lg border border-warn/60 px-3 py-1.5 text-xs text-warn hover:border-warn"
                 >
                   Replace
                 </button>
                 <button
                   type="button"
                   onClick={() => setPendingImport(null)}
-                  className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs hover:border-slate-500"
+                  className="rounded-lg border border-rule-strong px-3 py-1.5 text-xs hover:border-ink-3"
                 >
                   Cancel
                 </button>
@@ -614,18 +611,18 @@ function ContributionEditor({
             name="intent"
             value="save"
             disabled={isSaving}
-            className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+            className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
           >
             {isSaving ? "Saving…" : isNew ? "Create position" : "Save position"}
           </button>
           <Link
             to="/contributions"
-            className="text-sm text-slate-400 hover:text-slate-100"
+            className="text-sm text-ink-2 hover:text-ink"
           >
             Back to contributions
           </Link>
           {errors.form ? (
-            <p role="alert" className="text-sm text-red-300">
+            <p role="alert" className="text-sm text-danger">
               {errors.form}
             </p>
           ) : null}
@@ -633,8 +630,8 @@ function ContributionEditor({
       </Form>
 
       {experience ? (
-        <details className="rounded-2xl border border-red-950 bg-slate-900 p-6">
-          <summary className="cursor-pointer text-sm font-semibold text-red-300">
+        <details className="rounded-2xl border border-danger/30 bg-sheet p-6">
+          <summary className="cursor-pointer text-sm font-semibold text-danger">
             Delete position
           </summary>
           <Form
@@ -648,7 +645,7 @@ function ContributionEditor({
                 name="confirm"
                 value="yes"
                 required
-                className="size-4 accent-red-400"
+                className="size-4 accent-danger"
               />
               I understand this permanently deletes this contribution file.
             </label>
@@ -656,12 +653,12 @@ function ContributionEditor({
               type="submit"
               name="intent"
               value="delete"
-              className="rounded-lg border border-red-900 px-4 py-2 text-sm text-red-300 hover:border-red-600"
+              className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger hover:border-danger"
             >
               Delete position
             </button>
             {errors.delete ? (
-              <p role="alert" className="text-sm text-red-300">
+              <p role="alert" className="text-sm text-danger">
                 {errors.delete}
               </p>
             ) : null}
@@ -676,26 +673,26 @@ function ContributionEditor({
           event.preventDefault();
           blocker.reset?.();
         }}
-        className="m-auto max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 backdrop:bg-slate-950/70"
+        className="m-auto max-w-md rounded-2xl border border-rule-strong bg-sheet p-6 text-ink backdrop:bg-ink/40"
       >
         <h2 id="leave-title" className="text-lg font-semibold">
           Leave with unsaved changes?
         </h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-ink-2">
           Changes that have not been saved will be lost.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
             onClick={() => blocker.reset?.()}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-white"
+            className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-sheet hover:bg-ink-2"
           >
             Stay
           </button>
           <button
             type="button"
             onClick={() => blocker.proceed?.()}
-            className="rounded-lg border border-red-900 px-4 py-2 text-sm text-red-300 hover:border-red-600"
+            className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger hover:border-danger"
           >
             Leave
           </button>

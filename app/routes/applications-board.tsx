@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import {
   data,
   Form,
-  Link,
   useFetchers,
   useNavigation,
   useSubmit,
@@ -12,6 +11,8 @@ import {
   ApplicationBoard,
   moveFetcherKey,
 } from "../components/application-board";
+import { Button, ButtonLink } from "../components/ui/button";
+import { fieldClass } from "../components/ui/field";
 import {
   type ApplicationCardData,
   applyPendingMove,
@@ -163,15 +164,17 @@ export default function ApplicationsBoard({
     navigation.location.pathname === "/applications";
 
   return (
-    <main className="mx-auto max-w-[110rem] px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <main id="main" className="mx-auto max-w-[100rem] px-4 py-8 sm:px-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
-            Job search
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-[-0.015em]">
+            Applications
+          </h1>
+          <p className="mt-1 text-sm text-ink-2">
+            Drag cards between columns as each process moves.
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">Applications</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <Form method="get" role="search" className="flex items-center gap-2">
             <label htmlFor="application-filter" className="sr-only">
               Filter applications
@@ -184,69 +187,53 @@ export default function ApplicationsBoard({
               key={q}
               maxLength={maxQueryLength}
               placeholder="Filter by company, role, location"
-              className="w-64 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-cyan-400"
+              className={`${fieldClass} w-64 py-1.5`}
             />
-            <button
-              type="submit"
-              className="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400"
-            >
-              {searching ? "Filtering…" : "Filter"}
-            </button>
+            <Button type="submit" pending={searching}>
+              Filter
+            </Button>
             {q ? (
-              <Link
-                to="/applications"
-                className="text-sm text-slate-400 hover:text-slate-100"
-              >
+              <ButtonLink to="/applications" variant="ghost">
                 Clear
-              </Link>
+              </ButtonLink>
             ) : null}
           </Form>
-          <Link
-            to="/jobs"
-            className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium hover:border-cyan-400"
-          >
-            Find jobs
-          </Link>
-          <Link
-            to="/applications/new"
-            className="rounded-xl bg-cyan-400 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
-          >
+          <ButtonLink to="/jobs">Find jobs</ButtonLink>
+          <ButtonLink to="/applications/new" variant="primary">
             New application
-          </Link>
+          </ButtonLink>
         </div>
-      </div>
+      </header>
 
       <div className="mt-8">
         {applications.length === 0 ? (
           q ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 p-10 text-center">
+            <div className="rounded-sheet border border-dashed border-rule-strong bg-sheet/60 p-10 text-center">
               <p className="font-medium">No applications match “{q}”.</p>
-              <Link
-                to="/applications"
-                className="mt-3 inline-block text-sm text-cyan-400 hover:text-cyan-300"
-              >
+              <ButtonLink to="/applications" className="mt-4">
                 Clear filter
-              </Link>
+              </ButtonLink>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-700 p-10 text-center">
+            <div className="rounded-sheet border border-dashed border-rule-strong bg-sheet/60 p-10 text-center">
               <p className="font-medium">No applications yet.</p>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-3">
                 Add a job you are considering. Move it across columns as the
                 process advances.
               </p>
-              <Link
+              <ButtonLink
                 to="/applications/new"
-                className="mt-5 inline-block rounded-xl bg-cyan-400 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
+                variant="primary"
+                className="mt-5"
               >
                 Add first application
-              </Link>
+              </ButtonLink>
             </div>
           )
         ) : (
           <>
             {q ? (
-              <p className="mb-3 text-sm text-slate-400" role="status">
+              <p className="mb-3 text-sm text-ink-2" role="status">
                 Showing {applications.length} matching “{q}”.
               </p>
             ) : null}

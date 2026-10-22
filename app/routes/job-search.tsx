@@ -138,17 +138,17 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-cyan-400 aria-[invalid=true]:border-red-400";
+  "w-full rounded-xl border border-rule-strong bg-field px-3 py-2 text-sm outline-none focus:border-exhibit aria-[invalid=true]:border-danger";
 const primaryButtonClass =
-  "rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60";
+  "rounded-xl bg-exhibit px-4 py-2 text-sm font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60";
 const secondaryButtonClass =
-  "rounded-xl border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400 disabled:opacity-60";
-const textLinkClass = "text-cyan-400 hover:text-cyan-300";
+  "rounded-xl border border-rule-strong px-3 py-2 text-sm hover:border-exhibit disabled:opacity-60";
+const textLinkClass = "text-exhibit hover:text-exhibit-deep";
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="mt-1 text-xs text-red-300">
+    <p id={id} className="mt-1 text-xs text-danger">
       {message}
     </p>
   );
@@ -166,7 +166,7 @@ function SearchForm({
   return (
     <Form
       method="get"
-      className="mt-6 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 md:grid-cols-[2fr_2fr_1fr_auto]"
+      className="mt-6 grid gap-4 rounded-2xl border border-rule bg-sheet p-5 md:grid-cols-[2fr_2fr_1fr_auto]"
       aria-label="Search job listings"
     >
       <div>
@@ -205,7 +205,7 @@ function SearchForm({
           }
           className={`mt-1 ${inputClass}`}
         />
-        <p id="location-hint" className="mt-1 text-xs text-slate-500">
+        <p id="location-hint" className="mt-1 text-xs text-ink-3">
           Use full names, like United States, not US.
         </p>
         <FieldError id="location-error" message={errors.location} />
@@ -231,12 +231,12 @@ function SearchForm({
           ))}
         </select>
         <FieldError id="postedWithin-error" message={errors.postedWithin} />
-        <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+        <label className="mt-3 flex items-center gap-2 text-sm text-ink-2">
           <input
             type="checkbox"
             name="remote"
             defaultChecked={values.remote}
-            className="size-4 accent-cyan-400"
+            className="size-4 accent-exhibit"
           />
           Remote only
         </label>
@@ -251,7 +251,7 @@ function SearchForm({
         </button>
       </div>
       {errors.page ? (
-        <p className="text-sm text-red-300 md:col-span-4" role="alert">
+        <p className="text-sm text-danger md:col-span-4" role="alert">
           {errors.page}
         </p>
       ) : null}
@@ -267,7 +267,7 @@ function SavedLinks({
   created?: boolean;
 }) {
   return (
-    <p className="text-sm text-emerald-300" role="status">
+    <p className="text-sm text-ok" role="status">
       {created === false
         ? "Already on your board."
         : created
@@ -318,17 +318,17 @@ function ListingRow({
     <li>
       <article
         aria-labelledby={headingId}
-        className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+        className="rounded-2xl border border-rule bg-sheet p-5"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 id={headingId} className="text-lg font-semibold">
               {listing.title}
             </h2>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-ink-2">
               {listing.company || "Company not specified"}
             </p>
-            <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+            <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-2">
               {listing.location ? (
                 <div>
                   <dt className="sr-only">Location</dt>
@@ -369,10 +369,10 @@ function ListingRow({
 
         {listing.description ? (
           <details className="mt-3 text-sm">
-            <summary className="cursor-pointer text-slate-300 hover:text-slate-100">
+            <summary className="cursor-pointer text-ink-2 hover:text-ink">
               Job description
             </summary>
-            <p className="mt-2 max-h-96 overflow-y-auto whitespace-pre-line rounded-xl bg-slate-950 p-3 text-slate-300">
+            <p className="mt-2 max-h-96 overflow-y-auto whitespace-pre-line rounded-xl bg-field p-3 text-ink-2">
               {listing.description}
             </p>
           </details>
@@ -416,7 +416,7 @@ function ListingRow({
             </fetcher.Form>
           )}
           {result?.ok === false ? (
-            <p className="mt-2 text-sm text-red-300" role="alert">
+            <p className="mt-2 text-sm text-danger" role="alert">
               {result.error}
             </p>
           ) : null}
@@ -438,11 +438,11 @@ function Results({
   const page = search.input.page;
   if (!results.listings.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-700 p-10 text-center">
+      <div className="rounded-2xl border border-dashed border-rule-strong p-10 text-center">
         <p className="font-medium">
           {page > 1 ? "No more listings." : "No listings match this search."}
         </p>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-ink-3">
           Try broader keywords, a full location name, or a longer posting
           window.
         </p>
@@ -451,7 +451,7 @@ function Results({
   }
   return (
     <>
-      <p className="mb-3 text-sm text-slate-400" role="status">
+      <p className="mb-3 text-sm text-ink-2" role="status">
         Page {page}: {results.listings.length} listing
         {results.listings.length === 1 ? "" : "s"}
       </p>
@@ -500,17 +500,17 @@ export default function JobSearch({ loaderData }: Route.ComponentProps) {
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-semibold">Find jobs</h1>
-      <p className="mt-2 max-w-2xl text-sm text-slate-400">
+      <p className="mt-2 max-w-2xl text-sm text-ink-2">
         Search LinkedIn listings, save the ones worth pursuing to your board,
         and tailor your resume to them.
       </p>
 
       {!configured ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-700 p-10 text-center">
+        <div className="mt-6 rounded-2xl border border-dashed border-rule-strong p-10 text-center">
           <p className="font-medium">
             Job search is not set up on this server.
           </p>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-ink-3">
             You can still add applications by hand and paste their job
             descriptions.
           </p>
@@ -532,20 +532,20 @@ export default function JobSearch({ loaderData }: Route.ComponentProps) {
             {error ? (
               <p
                 role="alert"
-                className="rounded-2xl border border-red-900 bg-red-950/40 p-4 text-sm text-red-200"
+                className="rounded-2xl border border-danger/40 bg-danger-tint p-4 text-sm text-danger"
               >
                 {error}
               </p>
             ) : search.status === "valid" && results ? (
               <Results search={search} results={results} saved={saved} />
             ) : search.status === "idle" ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-3">
                 Enter keywords to search listings from the past week, or pick
                 another posting window.
               </p>
             ) : null}
           </section>
-          <p className="mt-10 text-xs text-slate-500">
+          <p className="mt-10 text-xs text-ink-3">
             Listings come from LinkedIn through the licensed Fantastic.jobs API.
             Saving a listing copies its details to your board without another
             search.

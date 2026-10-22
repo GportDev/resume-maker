@@ -31,6 +31,7 @@ import {
   type PendingMove,
 } from "../lib/applications";
 import { ApplicationCard } from "./application-card";
+import { ConfirmDialog } from "./ui/confirm-dialog";
 
 type ColumnIds = Record<ApplicationStatus, string[]>;
 type ActionResult = { error?: string };
@@ -249,17 +250,17 @@ function BoardColumn({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex min-h-[24rem] snap-start flex-col rounded-2xl border border-slate-800 bg-slate-950/60 p-3"
+      className="flex min-h-[24rem] snap-start flex-col rounded-2xl border border-rule bg-sheet-sunk p-3"
     >
       <header className="flex items-center justify-between gap-2 px-1">
         <h2 id={headingId} className="text-sm font-semibold">
           {label}{" "}
-          <span className="font-normal text-slate-500">({cards.length})</span>
+          <span className="font-normal text-ink-3">({cards.length})</span>
         </h2>
         <Link
           to={`/applications/new?status=${status}`}
           aria-label={`Add application to ${label}`}
-          className="rounded-md px-2 py-1 text-xs text-cyan-400 hover:bg-slate-900 hover:text-cyan-300"
+          className="rounded-md px-2 py-1 text-xs text-exhibit hover:bg-sheet-sunk hover:text-exhibit-deep"
         >
           + Add
         </Link>
@@ -268,14 +269,14 @@ function BoardColumn({
         <ol
           ref={setNodeRef}
           className={`mt-3 flex flex-1 flex-col gap-2 rounded-xl p-0.5 ${
-            isOver ? "bg-slate-900/80" : ""
+            isOver ? "bg-exhibit-tint" : ""
           }`}
         >
           {cards.map((card) => (
             <SortableApplication key={card.id} application={card} />
           ))}
           {cards.length === 0 ? (
-            <li className="rounded-xl border border-dashed border-slate-800 p-4 text-center text-xs text-slate-500">
+            <li className="rounded-xl border border-dashed border-rule p-4 text-center text-xs text-ink-3">
               No applications in {label.toLowerCase()}.
             </li>
           ) : null}
@@ -316,7 +317,7 @@ function SortableApplication({
             {...attributes}
             {...listeners}
             aria-label={`Drag ${label}`}
-            className="cursor-grab touch-none rounded-md px-1.5 py-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200 active:cursor-grabbing"
+            className="cursor-grab touch-none rounded-md px-1.5 py-1 text-ink-3 hover:bg-sheet-sunk hover:text-ink active:cursor-grabbing"
           >
             <span aria-hidden="true">⠿</span>
           </button>
@@ -331,12 +332,9 @@ function CardActions({ application }: { application: ApplicationCardData }) {
   const moveFetcher = useFetcher<ActionResult>({
     key: moveFetcherKey(application.id),
   });
-  const deleteFetcher = useFetcher<ActionResult>({
-    key: deleteFetcherKey(application.id),
-  });
   const label = cardLabel(application);
   const selectId = `status-${application.id}`;
-  const error = moveFetcher.data?.error ?? deleteFetcher.data?.error;
+  const error = moveFetcher.data?.error;
 
   return (
     <div className="space-y-2">
@@ -351,7 +349,7 @@ function CardActions({ application }: { application: ApplicationCardData }) {
           name="status"
           key={application.status}
           defaultValue={application.status}
-          className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+          className="min-w-0 flex-1 rounded-md border border-rule-strong bg-field px-2 py-1 text-xs"
         >
           {applicationStatuses.map((status) => (
             <option key={status} value={status}>
@@ -362,38 +360,23 @@ function CardActions({ application }: { application: ApplicationCardData }) {
         <button
           type="submit"
           aria-label={`Move ${label}`}
-          className="rounded-md border border-slate-700 px-2 py-1 text-xs hover:border-cyan-400"
+          className="rounded-md border border-rule-strong px-2 py-1 text-xs hover:border-exhibit"
         >
           Move
         </button>
       </moveFetcher.Form>
-      <details className="text-xs">
-        <summary className="cursor-pointer text-slate-500 hover:text-red-300">
-          Delete
-        </summary>
-        <deleteFetcher.Form method="post" className="mt-2 space-y-2">
-          <input type="hidden" name="intent" value="delete" />
-          <input type="hidden" name="id" value={application.id} />
-          <label className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              name="confirm"
-              value="yes"
-              required
-              className="mt-0.5 size-3.5 accent-red-400"
-            />
-            <span>Permanently delete {label}</span>
-          </label>
-          <button
-            type="submit"
-            className="rounded-md border border-red-900 px-2 py-1 text-red-300 hover:border-red-600"
-          >
-            Delete application
-          </button>
-        </deleteFetcher.Form>
-      </details>
+      <ConfirmDialog
+        triggerLabel="Delete"
+        triggerVariant="ghost"
+        triggerClassName="text-ink-3 hover:text-danger"
+        title={`Delete ${label}?`}
+        description="The application, its notes, and links to its tailored documents are removed permanently."
+        confirmLabel="Delete application"
+        fields={{ intent: "delete", id: application.id }}
+        fetcherKey={deleteFetcherKey(application.id)}
+      />
       {error ? (
-        <p role="alert" className="text-xs text-red-300">
+        <p role="alert" className="text-xs text-danger">
           {error}
         </p>
       ) : null}

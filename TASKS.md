@@ -77,7 +77,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U02 — Tokens and shared UI primitives
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U01
 - Intent: one implementation of each control, so polish happens once and every page inherits it.
 - Files: `app/app.css`, `app/root.tsx` (fonts), new `app/components/ui/*` (`button.tsx`, `field.tsx`, `badge.tsx`, `panel.tsx`, `page-header.tsx`, `confirm-dialog.tsx`, `toast.tsx`), `tests/*`
@@ -98,6 +98,14 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
   - Hover styles are gated by `(hover: hover) and (pointer: fine)`. A `prefers-reduced-motion` block removes transforms and keeps opacity.
   - Primitives are adopted on at least the board and profile pages (proof). Other pages migrate in their own tasks.
 - Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; browser check at both widths; keyboard-only pass through ConfirmDialog (focus trap, Escape, focus return).
+- Evidence (2026-10-21):
+  - Tokens from DESIGN.md are in `@theme` (`app/app.css`). Fonts: Libre Franklin, Source Serif 4, JetBrains Mono (`app/root.tsx`). Browser surfaces themed: selection, caret, scrollbar color, underline offset, tabular numerals.
+  - New `app/components/ui/`: `button.tsx` (variants primary/secondary/ghost/danger/destructive, `pressable` scale 0.97 over 160ms `--ease-out`, pending spinner + `aria-busy`), `field.tsx` (`Field`, `fieldClass`, `describedBy`), `stamp.tsx`, `sheet.tsx` (`Sheet`, `PageHeader`, `SheetSection`), `confirm-dialog.tsx` (native `<dialog>`, 240ms enter / 150ms exit via `@starting-style`; checkbox `<details>` form before hydration), `toast.tsx` (`toast()`, `useToast`, `<Toaster>`; polite live region, enter and exit from the bottom edge, timer pauses on hover and hidden tab).
+  - Whole app moved off the dark slate/cyan palette with a mapping codemod (23 files, 0 unmapped classes), so every page is coherent before its own task. `lucide-react` added for drawn icons.
+  - Adopted on the profile page (Sheet, PageHeader, Field, Button with pending state, toast on save) and the board (header buttons, filter field, card delete through ConfirmDialog with a keyed fetcher; optimistic hide still works).
+  - Hover is gated by Tailwind 4's `(hover: hover)` variant. Reduced motion removes transforms on pressables, dialogs, popovers, and toasts.
+  - `pnpm test` 261 passed; `pnpm typecheck`, `pnpm check`, `pnpm build` pass.
+  - Browser (1440 wide, local dev): profile save shows the toast; board Delete opens the dialog, Escape closes it, and focus returns to the trigger.
 
 ## U03 — App shell and navigation
 

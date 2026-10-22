@@ -224,7 +224,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 const inputClass =
-  "mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400";
+  "mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit";
 
 function Field({
   id,
@@ -248,12 +248,12 @@ function Field({
       </label>
       {children}
       {hint && !error ? (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-slate-500">
+        <p id={`${id}-hint`} className="mt-1 text-xs text-ink-3">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-error`} className="mt-1 text-xs text-red-300">
+        <p id={`${id}-error`} className="mt-1 text-xs text-danger">
           {error}
         </p>
       ) : null}
@@ -274,14 +274,14 @@ function AsideSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <section className="rounded-2xl border border-rule bg-sheet p-5">
       <h2 className="font-semibold">{title}</h2>
-      <div className="mt-2 text-sm text-slate-400">{children}</div>
+      <div className="mt-2 text-sm text-ink-2">{children}</div>
     </section>
   );
 }
 
-const asideLinkClass = "font-medium text-cyan-400 hover:text-cyan-300";
+const asideLinkClass = "font-medium text-exhibit hover:text-exhibit-deep";
 
 function TailoredDocuments({
   applicationId,
@@ -296,7 +296,7 @@ function TailoredDocuments({
       <AsideSection title="Fit estimate">
         {documents.fitScore !== null ? (
           <p>
-            <span className="text-3xl font-semibold text-cyan-300">
+            <span className="text-3xl font-semibold text-exhibit-deep">
               {documents.fitScore}
             </span>{" "}
             / 100 fit estimate.{" "}
@@ -305,14 +305,14 @@ function TailoredDocuments({
             </Link>
           </p>
         ) : (
-          <p className="text-slate-500">
+          <p className="text-ink-3">
             No analysis yet. Tailor this application to see which positions
             match the job.
           </p>
         )}
         <Link
           to={tailorPath}
-          className="mt-4 inline-block rounded-xl bg-cyan-400 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
+          className="mt-4 inline-block rounded-xl bg-exhibit px-4 py-2 font-semibold text-sheet hover:bg-exhibit-deep"
         >
           Tailor
         </Link>
@@ -334,7 +334,7 @@ function TailoredDocuments({
             </a>
           </p>
         ) : (
-          <p className="text-slate-500">No tailored resume yet.</p>
+          <p className="text-ink-3">No tailored resume yet.</p>
         )}
       </AsideSection>
       <AsideSection title="Cover letter">
@@ -354,7 +354,7 @@ function TailoredDocuments({
             </a>
           </p>
         ) : (
-          <p className="text-slate-500">No cover letter yet.</p>
+          <p className="text-ink-3">No cover letter yet.</p>
         )}
       </AsideSection>
     </>
@@ -402,20 +402,20 @@ export default function ApplicationDetail({
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <Link
         to="/applications"
-        className="text-sm text-cyan-400 hover:text-cyan-300"
+        className="text-sm text-exhibit hover:text-exhibit-deep"
       >
         ← Back to board
       </Link>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ink-2">
             {application ? application.companyName : "Job application"}
           </p>
           <h1 className="mt-1 text-3xl font-semibold">
             {application ? application.position : "New application"}
           </h1>
           {application ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-2">
               <StatusBadge status={application.status} />
               {application.source === "linkedin" ? (
                 <>
@@ -423,7 +423,7 @@ export default function ApplicationDetail({
                   <LinkedInPostingLink
                     externalId={application.externalId}
                     label={`${application.position} at ${application.companyName}`}
-                    className="text-cyan-400 hover:text-cyan-300"
+                    className="text-exhibit hover:text-exhibit-deep"
                   >
                     View on LinkedIn
                   </LinkedInPostingLink>
@@ -436,7 +436,7 @@ export default function ApplicationDetail({
             </div>
           ) : null}
         </div>
-        <p role="status" className="text-sm text-emerald-300">
+        <p role="status" className="text-sm text-ok">
           {saved
             ? "Application saved."
             : matched
@@ -456,7 +456,7 @@ export default function ApplicationDetail({
             method="post"
             className="space-y-6"
           >
-            <section className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:grid-cols-2">
+            <section className="grid gap-5 rounded-2xl border border-rule bg-sheet p-6 sm:grid-cols-2">
               <h2 className="text-xl font-semibold sm:col-span-2">Role</h2>
               <Field
                 id="companyName"
@@ -544,7 +544,7 @@ export default function ApplicationDetail({
               </Field>
             </section>
 
-            <fieldset className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:grid-cols-4">
+            <fieldset className="grid gap-5 rounded-2xl border border-rule bg-sheet p-6 sm:grid-cols-4">
               <legend className="sr-only">Salary range</legend>
               <h2 className="text-xl font-semibold sm:col-span-4">
                 Salary range
@@ -623,7 +623,7 @@ export default function ApplicationDetail({
               </Field>
             </fieldset>
 
-            <section className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <section className="space-y-5 rounded-2xl border border-rule bg-sheet p-6">
               <Field
                 id="jobDescription"
                 label="Job description"
@@ -664,7 +664,7 @@ export default function ApplicationDetail({
                 name="intent"
                 value="save"
                 disabled={isSaving}
-                className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+                className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
               >
                 {isSaving
                   ? "Saving…"
@@ -674,12 +674,12 @@ export default function ApplicationDetail({
               </button>
               <Link
                 to="/applications"
-                className="text-sm text-slate-400 hover:text-slate-100"
+                className="text-sm text-ink-2 hover:text-ink"
               >
                 Cancel
               </Link>
               {errors.form ? (
-                <p role="alert" className="text-sm text-red-300">
+                <p role="alert" className="text-sm text-danger">
                   {errors.form}
                 </p>
               ) : null}
@@ -705,14 +705,14 @@ export default function ApplicationDetail({
             />
           ) : (
             <AsideSection title="Tailoring">
-              <p className="text-slate-500">
+              <p className="text-ink-3">
                 Save the application first, then tailor a resume and cover
                 letter to it.
               </p>
             </AsideSection>
           )}
           {application ? (
-            <section className="rounded-2xl border border-red-950 bg-slate-900 p-5">
+            <section className="rounded-2xl border border-danger/30 bg-sheet p-5">
               <h2 className="font-semibold">Delete application</h2>
               <Form method="post" className="mt-3 space-y-3">
                 <label className="flex items-start gap-2 text-sm">
@@ -721,7 +721,7 @@ export default function ApplicationDetail({
                     name="confirm"
                     value="yes"
                     required
-                    className="mt-0.5 size-4 accent-red-400"
+                    className="mt-0.5 size-4 accent-danger"
                   />
                   I understand this permanently deletes this application.
                 </label>
@@ -729,12 +729,12 @@ export default function ApplicationDetail({
                   type="submit"
                   name="intent"
                   value="delete"
-                  className="rounded-lg border border-red-900 px-4 py-2 text-sm text-red-300 hover:border-red-600"
+                  className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger hover:border-danger"
                 >
                   Delete application
                 </button>
                 {errors.delete ? (
-                  <p role="alert" className="text-sm text-red-300">
+                  <p role="alert" className="text-sm text-danger">
                     {errors.delete}
                   </p>
                 ) : null}

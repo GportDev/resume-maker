@@ -134,7 +134,7 @@ export default function ContributionCompany({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <section className="rounded-2xl border border-rule bg-sheet p-6">
         <h2 className="text-xl font-semibold">
           {company ? `Edit ${company.name}` : "New company"}
         </h2>
@@ -164,12 +164,12 @@ export default function ContributionCompany({
                 aria-describedby={
                   errors[field.name] ? `company-${field.name}-error` : undefined
                 }
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
               />
               {errors[field.name] ? (
                 <p
                   id={`company-${field.name}-error`}
-                  className="mt-1 text-xs text-red-300"
+                  className="mt-1 text-xs text-danger"
                 >
                   {errors[field.name]}
                 </p>
@@ -182,7 +182,7 @@ export default function ContributionCompany({
               name="intent"
               value="save"
               disabled={isSaving}
-              className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+              className="rounded-xl bg-exhibit px-5 py-3 font-semibold text-sheet hover:bg-exhibit-deep disabled:opacity-60"
             >
               {isSaving
                 ? "Saving…"
@@ -193,12 +193,12 @@ export default function ContributionCompany({
             {company ? (
               <Link
                 to={`/contributions/new?companyId=${company.id}`}
-                className="rounded-xl border border-slate-700 px-4 py-3 hover:border-cyan-400"
+                className="rounded-xl border border-rule-strong px-4 py-3 hover:border-exhibit"
               >
                 New position at {company.name}
               </Link>
             ) : null}
-            <span role="status" className="text-sm text-emerald-300">
+            <span role="status" className="text-sm text-ok">
               {saved ? "Company saved." : ""}
             </span>
           </div>
@@ -206,10 +206,10 @@ export default function ContributionCompany({
       </section>
 
       {company ? (
-        <section className="rounded-2xl border border-red-950 bg-slate-900 p-6">
+        <section className="rounded-2xl border border-danger/30 bg-sheet p-6">
           <h2 className="text-lg font-semibold">Delete company</h2>
           {positionCount > 0 ? (
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-sm text-ink-2">
               This company has {positionCount}{" "}
               {positionCount === 1 ? "position" : "positions"}. Delete or move
               them to another company before deleting it.
@@ -222,7 +222,7 @@ export default function ContributionCompany({
                   name="confirm"
                   value="yes"
                   required
-                  className="size-4 accent-red-400"
+                  className="size-4 accent-danger"
                 />
                 I understand this permanently deletes {company.name}.
               </label>
@@ -230,14 +230,14 @@ export default function ContributionCompany({
                 type="submit"
                 name="intent"
                 value="delete"
-                className="rounded-lg border border-red-900 px-4 py-2 text-sm text-red-300 hover:border-red-600"
+                className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger hover:border-danger"
               >
                 Delete company
               </button>
             </Form>
           )}
           {errors.delete ? (
-            <p role="alert" className="mt-3 text-sm text-red-300">
+            <p role="alert" className="mt-3 text-sm text-danger">
               {errors.delete}
             </p>
           ) : null}

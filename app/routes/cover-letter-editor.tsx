@@ -79,11 +79,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 const inputClass =
-  "mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-4 leading-6 outline-none focus:border-cyan-400";
+  "mt-2 w-full rounded-xl border border-rule-strong bg-field p-4 leading-6 outline-none focus:border-exhibit";
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   return message ? (
-    <p id={id} className="mt-1 text-xs text-red-300">
+    <p id={id} className="mt-1 text-xs text-danger">
       {message}
     </p>
   ) : null;
@@ -108,13 +108,13 @@ export default function CoverLetterEditor({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
           to={back.to}
-          className="text-sm text-cyan-400 hover:text-cyan-300"
+          className="text-sm text-exhibit hover:text-exhibit-deep"
         >
           ← Back to {back.label}
         </Link>
         <a
           href={`/cover-letters/${coverLetter.id}/pdf`}
-          className="rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
+          className="rounded-xl bg-exhibit px-4 py-3 font-semibold text-sheet hover:bg-exhibit-deep"
         >
           Download PDF
         </a>
@@ -124,10 +124,10 @@ export default function CoverLetterEditor({
         <Form
           key={coverLetter.updatedAt.toString()}
           method="post"
-          className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6"
+          className="space-y-5 rounded-2xl border border-rule bg-sheet p-6"
         >
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
               Cover letter editor
             </p>
             <h1 className="mt-2 text-2xl font-semibold">{coverLetter.title}</h1>
@@ -144,7 +144,7 @@ export default function CoverLetterEditor({
               maxLength={160}
               aria-invalid={errors.title ? true : undefined}
               aria-describedby={errors.title ? "title-error" : undefined}
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
             />
             <FieldError id="title-error" message={errors.title} />
           </div>
@@ -162,7 +162,7 @@ export default function CoverLetterEditor({
               aria-describedby={
                 errors.recipient ? "recipient-error" : undefined
               }
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
             />
             <FieldError id="recipient-error" message={errors.recipient} />
           </div>
@@ -183,9 +183,9 @@ export default function CoverLetterEditor({
             />
             <FieldError id="opening-error" message={errors.opening} />
           </div>
-          <fieldset className="space-y-4 rounded-xl border border-slate-800 p-4">
+          <fieldset className="space-y-4 rounded-xl border border-rule p-4">
             <legend className="px-2 font-medium">Body paragraphs</legend>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               Each paragraph keeps its link to the experience it was written
               from.
             </p>
@@ -195,7 +195,7 @@ export default function CoverLetterEditor({
               >
                 <label
                   htmlFor={`paragraph-${index}`}
-                  className="block text-xs text-slate-400"
+                  className="block text-xs text-ink-2"
                 >
                   Paragraph {index + 1}
                 </label>
@@ -233,11 +233,11 @@ export default function CoverLetterEditor({
             <button
               type="submit"
               disabled={isSaving}
-              className="rounded-xl bg-slate-100 px-5 py-3 font-semibold text-slate-950 hover:bg-white disabled:opacity-60"
+              className="rounded-xl bg-ink px-5 py-3 font-semibold text-sheet hover:bg-ink-2 disabled:opacity-60"
             >
               {isSaving ? "Saving…" : "Save changes"}
             </button>
-            <span role="status" className="text-sm text-emerald-300">
+            <span role="status" className="text-sm text-ok">
               {actionData && "saved" in actionData ? "Saved." : ""}
             </span>
           </div>
@@ -246,16 +246,14 @@ export default function CoverLetterEditor({
         <section aria-labelledby="preview-heading">
           <p
             id="preview-heading"
-            className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500"
+            className="mb-3 text-sm font-semibold uppercase tracking-wider text-ink-3"
           >
             Preview
           </p>
-          <article className="min-h-[60rem] bg-white p-12 text-[0.95rem] leading-7 text-slate-900 shadow-2xl">
+          <article className="min-h-[60rem] bg-white p-12 text-[0.95rem] leading-7 text-ink shadow-2xl">
             <h2 className="text-3xl font-bold">{sender.fullName}</h2>
             {contact.length ? (
-              <p className="mt-1 text-xs text-slate-600">
-                {contact.join(" | ")}
-              </p>
+              <p className="mt-1 text-xs text-ink-3">{contact.join(" | ")}</p>
             ) : null}
             <p className="mt-8">{formatLetterDate(coverLetter.updatedAt)}</p>
             <p className="mt-6">{content.recipient}</p>

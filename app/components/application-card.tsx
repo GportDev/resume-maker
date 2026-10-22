@@ -14,12 +14,12 @@ import {
 } from "../lib/job-match";
 
 const statusTone: Record<ApplicationStatus, string> = {
-  saved: "bg-slate-800 text-slate-300",
-  applied: "bg-cyan-950 text-cyan-300",
-  interviewing: "bg-violet-950 text-violet-300",
-  offer: "bg-emerald-950 text-emerald-300",
-  rejected: "bg-red-950 text-red-300",
-  withdrawn: "bg-amber-950 text-amber-300",
+  saved: "bg-sheet-sunk text-ink-2",
+  applied: "bg-exhibit-tint text-exhibit-deep",
+  interviewing: "bg-violet-tint text-violet",
+  offer: "bg-ok-tint text-ok",
+  rejected: "bg-danger-tint text-danger",
+  withdrawn: "bg-warn-tint text-warn",
 };
 
 export function StatusBadge({ status }: { status: ApplicationStatus }) {
@@ -34,17 +34,17 @@ export function StatusBadge({ status }: { status: ApplicationStatus }) {
 
 export function FitBadge({ score }: { score: number }) {
   return (
-    <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-xs font-medium text-cyan-300">
+    <span className="rounded bg-exhibit-tint px-1.5 py-0.5 text-xs font-medium text-exhibit-deep">
       <span className="sr-only">Fit estimate </span>Fit {score}
     </span>
   );
 }
 
 const recommendationTone: Record<MatchRecommendation, string> = {
-  strong_match: "bg-emerald-950 text-emerald-300",
-  worth_tailoring: "bg-violet-950 text-violet-300",
-  weak_match: "bg-slate-800 text-slate-300",
-  needs_review: "bg-amber-950 text-amber-300",
+  strong_match: "bg-ok-tint text-ok",
+  worth_tailoring: "bg-violet-tint text-violet",
+  weak_match: "bg-sheet-sunk text-ink-2",
+  needs_review: "bg-warn-tint text-warn",
 };
 
 export function MatchBadge({ match }: { match: JobMatchSummary }) {
@@ -59,11 +59,11 @@ export function MatchBadge({ match }: { match: JobMatchSummary }) {
 }
 
 const documentLinkClass =
-  "rounded text-cyan-400 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-400";
+  "rounded text-exhibit hover:text-exhibit-deep focus-visible:outline-2 focus-visible:outline-exhibit";
 
 export function LinkedInBadge() {
   return (
-    <span className="rounded bg-sky-950 px-1.5 py-0.5 text-xs text-sky-300">
+    <span className="rounded bg-exhibit-tint px-1.5 py-0.5 text-xs text-exhibit">
       LinkedIn
     </span>
   );
@@ -159,24 +159,24 @@ export function ApplicationCard({
   );
 
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-900 p-3 shadow-sm">
+    <article className="rounded-xl border border-rule bg-sheet p-3 shadow-sm">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold leading-5">
             <Link
               to={`/applications/${application.id}`}
-              className="hover:text-cyan-300"
+              className="hover:text-exhibit-deep"
             >
               {application.position}
             </Link>
           </h3>
-          <p className="truncate text-sm text-slate-400">
+          <p className="truncate text-sm text-ink-2">
             {application.companyName}
           </p>
         </div>
         {dragHandle}
       </div>
-      <dl className="mt-2 space-y-0.5 text-xs text-slate-400">
+      <dl className="mt-2 space-y-0.5 text-xs text-ink-2">
         {application.location ? (
           <div className="flex gap-1">
             <dt className="sr-only">Location</dt>

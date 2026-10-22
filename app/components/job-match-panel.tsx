@@ -37,13 +37,13 @@ const statusLabels: Record<RequirementStatus, string> = {
 };
 
 const statusTone: Record<RequirementStatus, string> = {
-  verified: "bg-emerald-950 text-emerald-300",
-  missing: "bg-slate-800 text-slate-300",
-  needs_review: "bg-amber-950 text-amber-300",
+  verified: "bg-ok-tint text-ok",
+  missing: "bg-sheet-sunk text-ink-2",
+  needs_review: "bg-warn-tint text-warn",
 };
 
 const smallButtonClass =
-  "rounded-lg border border-slate-700 px-2.5 py-1 text-xs hover:border-cyan-400 disabled:opacity-60";
+  "rounded-lg border border-rule-strong px-2.5 py-1 text-xs hover:border-exhibit disabled:opacity-60";
 
 function percent(value: number | null): string {
   return value === null ? "—" : `${Math.round(value * 100)}%`;
@@ -165,14 +165,14 @@ export function JobMatchPanel({
   return (
     <section
       aria-labelledby="job-match-heading"
-      className="rounded-2xl border border-slate-800 bg-slate-900 p-6"
+      className="rounded-2xl border border-rule bg-sheet p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="job-match-heading" className="text-xl font-semibold">
             Job match
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-ink-3">
             Checks which of your positions demonstrates each requirement.
           </p>
         </div>
@@ -183,7 +183,7 @@ export function JobMatchPanel({
               name="intent"
               value="run-match"
               disabled={busy}
-              className="rounded-xl border border-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-950 disabled:opacity-60"
+              className="rounded-xl border border-exhibit px-4 py-2 text-sm font-semibold text-exhibit-deep hover:bg-exhibit-tint disabled:opacity-60"
             >
               {pendingIntent === "run-match"
                 ? "Running match…"
@@ -196,16 +196,16 @@ export function JobMatchPanel({
       </div>
 
       {!configured ? (
-        <p className="mt-4 text-sm text-slate-400">
+        <p className="mt-4 text-sm text-ink-2">
           Job matching is not configured on this server. Tailoring still uses
           the analysis.
         </p>
       ) : !hasAnalysis ? (
-        <p className="mt-4 text-sm text-slate-400">
+        <p className="mt-4 text-sm text-ink-2">
           Analyze the job description first.{" "}
           <Link
             to={`/applications/${applicationId}/tailor`}
-            className="font-medium text-cyan-400 hover:text-cyan-300"
+            className="font-medium text-exhibit hover:text-exhibit-deep"
           >
             Tailor this application
           </Link>
@@ -213,7 +213,7 @@ export function JobMatchPanel({
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-4 text-sm text-red-300">
+        <p role="alert" className="mt-4 text-sm text-danger">
           {error}
         </p>
       ) : null}
@@ -222,7 +222,7 @@ export function JobMatchPanel({
         <div className="mt-5 space-y-5">
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
-              <p className="text-4xl font-semibold text-cyan-300">
+              <p className="text-4xl font-semibold text-exhibit-deep">
                 {result.matchScore}%
               </p>
               <div className="mt-1">
@@ -231,19 +231,19 @@ export function JobMatchPanel({
             </div>
             <dl className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <dt className="text-xs text-slate-500">Required</dt>
+                <dt className="text-xs text-ink-3">Required</dt>
                 <dd>
                   {result.points.required} / {matchWeights.required}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Preferred</dt>
+                <dt className="text-xs text-ink-3">Preferred</dt>
                 <dd>
                   {result.points.preferred} / {matchWeights.preferred}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Seniority</dt>
+                <dt className="text-xs text-ink-3">Seniority</dt>
                 <dd>
                   {result.points.seniority} / {matchWeights.seniority}
                 </dd>
@@ -251,16 +251,16 @@ export function JobMatchPanel({
             </dl>
             <dl className="space-y-1 text-sm">
               <div className="flex gap-2">
-                <dt className="text-slate-500">Seniority:</dt>
+                <dt className="text-ink-3">Seniority:</dt>
                 <dd>
                   {seniorityLevel ?? "Unclear"}
                   {result.seniority.needsReview ? (
-                    <span className="text-amber-300"> (low confidence)</span>
+                    <span className="text-warn"> (low confidence)</span>
                   ) : null}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="text-slate-500">Domain:</dt>
+                <dt className="text-ink-3">Domain:</dt>
                 <dd>
                   {domainFitLabels[result.domainFit.fit]} (
                   {percent(result.domainFit.probability)})
@@ -270,7 +270,7 @@ export function JobMatchPanel({
           </div>
 
           {match.stale ? (
-            <p className="text-sm text-amber-300">
+            <p className="text-sm text-warn">
               This match is for an earlier analysis. Run match again to update
               it.
             </p>
@@ -279,7 +279,7 @@ export function JobMatchPanel({
           {result.requirements.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[40rem] text-left text-sm">
-                <thead className="text-xs uppercase tracking-wider text-slate-500">
+                <thead className="text-xs uppercase tracking-wider text-ink-3">
                   <tr>
                     <th scope="col" className="py-2 pr-4 font-medium">
                       Requirement
@@ -295,7 +295,7 @@ export function JobMatchPanel({
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-rule">
                   {result.requirements.map((decision) => {
                     const position = decision.experienceId
                       ? labels.get(decision.experienceId)
@@ -304,25 +304,25 @@ export function JobMatchPanel({
                       <tr key={decision.id} className="align-top">
                         <th scope="row" className="py-3 pr-4 font-medium">
                           {decision.text}
-                          <span className="block text-xs font-normal text-slate-500">
+                          <span className="block text-xs font-normal text-ink-3">
                             {decision.kind === "required"
                               ? "Required"
                               : "Preferred"}
                           </span>
                         </th>
-                        <td className="py-3 pr-4 text-slate-300">
+                        <td className="py-3 pr-4 text-ink-2">
                           {decision.status === "missing" || !position ? (
-                            <span className="text-slate-500">None</span>
+                            <span className="text-ink-3">None</span>
                           ) : (
                             <>
                               {position.position}
-                              <span className="block text-xs text-slate-500">
+                              <span className="block text-xs text-ink-3">
                                 {position.company}
                               </span>
                             </>
                           )}
                         </td>
-                        <td className="py-3 pr-4 text-slate-300">
+                        <td className="py-3 pr-4 text-ink-2">
                           {decision.status === "missing"
                             ? `${percent(decision.noneProbability)} none`
                             : percent(decision.probability)}
@@ -342,19 +342,19 @@ export function JobMatchPanel({
               </table>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-3">
               The analysis listed no required or preferred skills.
             </p>
           )}
 
-          <p className="text-xs leading-5 text-slate-500">
+          <p className="text-xs leading-5 text-ink-3">
             Match score is a heuristic over your stored evidence, not a hiring
             probability. Matched {formatDateTime(match.createdAt)} UTC with{" "}
             {match.modelVersion}.
           </p>
         </div>
       ) : configured && hasAnalysis ? (
-        <p className="mt-4 text-sm text-slate-500">No match yet.</p>
+        <p className="mt-4 text-sm text-ink-3">No match yet.</p>
       ) : null}
     </section>
   );

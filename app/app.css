@@ -2,14 +2,84 @@
 
 @theme {
   --font-sans:
-    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    "Libre Franklin", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  --font-serif: "Source Serif 4", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-board: #e8e4db;
+  --color-board-deep: #dcd7cc;
+  --color-sheet: #fcfbf8;
+  --color-sheet-sunk: #f4f1ea;
+  --color-field: #ffffff;
+  --color-ink: #1c1c1c;
+  --color-ink-2: #4b4943;
+  --color-ink-3: #65615a;
+  --color-rule: #dcd7cc;
+  --color-rule-strong: #8f887a;
+  --color-exhibit: #24427a;
+  --color-exhibit-deep: #1b3463;
+  --color-exhibit-tint: #e4e9f2;
+  --color-manila: #e1c06a;
+  --color-manila-tint: #f6ecd0;
+  --color-manila-ink: #6b5216;
+  --color-margin: #c4473b;
+  --color-danger: #a1352b;
+  --color-danger-tint: #f6e3e0;
+  --color-ok: #2f6b45;
+  --color-ok-tint: #e2efe6;
+  --color-warn: #8a5a12;
+  --color-warn-tint: #f7ead2;
+  --color-violet: #5b3f8c;
+  --color-violet-tint: #ece6f4;
+
+  --radius-stamp: 2px;
+  --radius-sheet: 3px;
+  --radius-control: 6px;
+
+  --shadow-sheet:
+    0 1px 2px rgb(28 28 28 / 0.06), 0 10px 28px -14px rgb(28 28 28 / 0.22);
+  --shadow-lifted:
+    0 2px 4px rgb(28 28 28 / 0.08), 0 18px 40px -16px rgb(28 28 28 / 0.35);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  --duration-press: 160ms;
+  --duration-pop: 150ms;
+  --duration-dialog: 240ms;
 }
 
 html,
 body {
-  @apply min-h-screen bg-slate-950 text-slate-100 antialiased;
-  color-scheme: dark;
+  @apply min-h-screen bg-board text-ink antialiased;
+  color-scheme: light;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+::selection {
+  background: var(--color-exhibit-tint);
+  color: var(--color-ink);
+}
+
+* {
+  scrollbar-color: var(--color-rule-strong) transparent;
+}
+
+body {
+  caret-color: var(--color-exhibit);
+}
+
+:where(a) {
+  text-underline-offset: 3px;
+}
+
+:where(table, .tabular) {
+  font-variant-numeric: tabular-nums;
 }
 
 button,
@@ -17,28 +87,49 @@ a,
 input,
 select,
 summary,
-textarea {
-  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400;
+textarea,
+[tabindex] {
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-exhibit;
 }
 
 .cm-editor.cm-focused {
-  @apply outline-2 outline-offset-2 outline-cyan-400;
+  @apply outline-none;
+}
+
+/* Pressables confirm the press (Emil: 0.97 over 160ms ease-out). */
+.pressable {
+  transition-property: transform, background-color, border-color, color;
+  transition-duration: var(--duration-press);
+  transition-timing-function: var(--ease-out);
+}
+
+.pressable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  @apply cursor-not-allowed opacity-55;
+}
+
+button[aria-busy="true"] {
+  @apply cursor-progress opacity-100;
 }
 
 .markdown-preview {
-  @apply space-y-3 leading-7 text-slate-300;
+  @apply space-y-3 font-serif text-[1.0625rem] leading-7 text-ink-2;
 }
 
 .markdown-preview h1 {
-  @apply text-2xl font-semibold text-slate-100;
+  @apply font-sans text-2xl font-bold text-ink;
 }
 
 .markdown-preview h2 {
-  @apply mt-6 text-xl font-semibold text-slate-100 first:mt-0;
+  @apply mt-6 font-sans text-lg font-semibold text-ink first:mt-0;
 }
 
 .markdown-preview h3 {
-  @apply mt-4 font-semibold text-slate-100;
+  @apply mt-4 font-sans font-semibold text-ink;
 }
 
 .markdown-preview ul {
@@ -50,17 +141,96 @@ textarea {
 }
 
 .markdown-preview strong {
-  @apply font-semibold text-slate-100;
+  @apply font-semibold text-ink;
 }
 
 .markdown-preview code {
-  @apply rounded bg-slate-800 px-1 py-0.5 text-sm;
+  @apply rounded-stamp bg-sheet-sunk px-1 py-0.5 font-mono text-sm;
 }
 
 .markdown-preview a {
-  @apply text-cyan-400 underline;
+  @apply text-exhibit underline;
 }
 
-button:disabled {
-  @apply cursor-wait opacity-60;
+/* Dialogs: enter 240ms, exit 150ms; centered (modals keep center origin). */
+dialog.dialog {
+  opacity: 0;
+  transform: scale(0.96);
+  transition-property: opacity, transform, overlay, display;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+  transition-behavior: allow-discrete;
+}
+
+dialog.dialog[open] {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: var(--duration-dialog);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+dialog.dialog::backdrop {
+  background: rgb(28 28 28 / 0);
+  transition-property: background, overlay, display;
+  transition-duration: 150ms;
+  transition-behavior: allow-discrete;
+}
+
+dialog.dialog[open]::backdrop {
+  background: rgb(28 28 28 / 0.35);
+
+  @starting-style {
+    background: rgb(28 28 28 / 0);
+  }
+}
+
+/* Popovers and menus scale from their trigger. */
+.pop {
+  transform-origin: var(--pop-origin, top left);
+  transition-property: opacity, transform;
+  transition-duration: 100ms;
+  transition-timing-function: var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+/* Toasts enter and leave through the same bottom edge. */
+.toast {
+  transition-property: opacity, transform;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.toast[data-leaving] {
+  opacity: 0;
+  transform: translateY(8px);
+  transition-duration: 150ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep opacity and color feedback; drop movement and scale. */
+  .pressable:active:not(:disabled),
+  dialog.dialog,
+  dialog.dialog[open],
+  .pop,
+  .toast,
+  .toast[data-leaving] {
+    transform: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }

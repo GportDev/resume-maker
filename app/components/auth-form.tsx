@@ -43,15 +43,15 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 px-4 py-12 text-slate-100">
-      <section className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl shadow-cyan-950/30">
-        <Link to="/" className="text-sm font-semibold text-cyan-400">
+    <main className="grid min-h-screen place-items-center bg-field px-4 py-12 text-ink">
+      <section className="w-full max-w-md rounded-3xl border border-rule bg-sheet p-8 shadow-2xl shadow-sheet">
+        <Link to="/" className="text-sm font-semibold text-exhibit">
           Resume Fit
         </Link>
         <h1 className="mt-6 text-3xl font-semibold tracking-tight">
           {isSignUp ? "Create your account" : "Welcome back"}
         </h1>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-ink-2">
           {isSignUp
             ? "Build evidence-based resumes for every application."
             : "Continue tailoring your next application."}
@@ -62,7 +62,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             <label className="block text-sm font-medium">
               Name
               <input
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
                 name="name"
                 autoComplete="name"
                 required
@@ -72,7 +72,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           <label className="block text-sm font-medium">
             Email
             <input
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
               name="email"
               type="email"
               autoComplete="email"
@@ -82,7 +82,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           <label className="block text-sm font-medium">
             Password
             <input
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-field px-4 py-3 outline-none focus:border-exhibit"
               name="password"
               type="password"
               autoComplete={isSignUp ? "new-password" : "current-password"}
@@ -92,14 +92,14 @@ export function AuthForm({ mode }: AuthFormProps) {
           </label>
           {error ? (
             <p
-              className="rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-200"
+              className="rounded-xl border border-danger/40 bg-danger-tint p-3 text-sm text-danger"
               role="alert"
             >
               {error}
             </p>
           ) : null}
           <button
-            className="w-full rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-wait disabled:opacity-60"
+            className="w-full rounded-xl bg-exhibit px-4 py-3 font-semibold text-sheet transition hover:bg-exhibit-deep disabled:cursor-wait disabled:opacity-60"
             disabled={pending}
             type="submit"
           >
@@ -107,10 +107,10 @@ export function AuthForm({ mode }: AuthFormProps) {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
+        <p className="mt-6 text-center text-sm text-ink-2">
           {isSignUp ? "Already have an account?" : "New here?"}{" "}
           <Link
-            className="font-medium text-cyan-400 hover:text-cyan-300"
+            className="font-medium text-exhibit hover:text-exhibit-deep"
             to={isSignUp ? "/sign-in" : "/sign-up"}
           >
             {isSignUp ? "Sign in" : "Create account"}

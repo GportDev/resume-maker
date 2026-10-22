@@ -6,6 +6,7 @@ import {
   type ShouldRevalidateFunctionArgs,
   useNavigate,
 } from "react-router";
+import { Toaster } from "../components/ui/toast";
 import { requireUser } from "../lib/auth.server";
 import { authClient } from "../lib/auth-client";
 import type { Route } from "./+types/app-layout";
@@ -34,11 +35,11 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+    <div className="min-h-screen bg-field text-ink">
+      <header className="border-b border-rule bg-board backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-4 sm:px-6">
           <Link to="/" className="mr-auto text-lg font-semibold tracking-tight">
-            Resume <span className="text-cyan-400">Fit</span>
+            Resume <span className="text-exhibit">Fit</span>
           </Link>
           <nav className="flex items-center gap-1" aria-label="Main navigation">
             {[
@@ -56,8 +57,8 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
                 className={({ isActive }) =>
                   `rounded-lg px-3 py-2 text-sm font-medium ${
                     isActive
-                      ? "bg-slate-800 text-cyan-300"
-                      : "text-slate-400 hover:text-slate-100"
+                      ? "bg-sheet-sunk text-exhibit-deep"
+                      : "text-ink-2 hover:text-ink"
                   }`
                 }
               >
@@ -67,19 +68,20 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
           </nav>
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium">{loaderData.user.name}</p>
-            <p className="text-xs text-slate-500">{loaderData.user.email}</p>
+            <p className="text-xs text-ink-3">{loaderData.user.email}</p>
           </div>
           <button
             type="button"
             disabled={signingOut}
             onClick={signOut}
-            className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-slate-500 disabled:opacity-50"
+            className="rounded-lg border border-rule-strong px-3 py-2 text-sm text-ink-2 hover:border-ink-3 disabled:opacity-50"
           >
             {signingOut ? "Signing out…" : "Sign out"}
           </button>
         </div>
       </header>
       <Outlet />
+      <Toaster />
     </div>
   );
 }

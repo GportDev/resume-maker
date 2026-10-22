@@ -60,7 +60,7 @@ export default function AnalysisResult({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <Link to="/" className="text-sm text-cyan-400 hover:text-cyan-300">
+      <Link to="/" className="text-sm text-exhibit hover:text-exhibit-deep">
         ← New analysis
       </Link>
       <div className="mt-5 grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -69,14 +69,14 @@ export default function AnalysisResult({ loaderData }: Route.ComponentProps) {
             {record.applicationId ? (
               <Link
                 to={`/applications/${record.applicationId}/tailor`}
-                className="mt-6 block rounded-xl bg-cyan-400 px-4 py-3 text-center font-semibold text-slate-950 hover:bg-cyan-300"
+                className="mt-6 block rounded-xl bg-exhibit px-4 py-3 text-center font-semibold text-sheet hover:bg-exhibit-deep"
               >
                 Open tailoring
               </Link>
             ) : (
-              <p className="mt-6 text-sm text-slate-400">
+              <p className="mt-6 text-sm text-ink-2">
                 Read-only. To generate documents, paste this job on the{" "}
-                <Link to="/" className="text-cyan-400 hover:text-cyan-300">
+                <Link to="/" className="text-exhibit hover:text-exhibit-deep">
                   home page
                 </Link>{" "}
                 and save it to an application.
@@ -86,7 +86,7 @@ export default function AnalysisResult({ loaderData }: Route.ComponentProps) {
           {documents.resumes.length || documents.coverLetters.length ? (
             <nav
               aria-label="Documents from this analysis"
-              className="rounded-2xl border border-slate-800 bg-slate-900 p-5 text-sm"
+              className="rounded-2xl border border-rule bg-sheet p-5 text-sm"
             >
               <h2 className="font-semibold">Documents</h2>
               <ul className="mt-3 space-y-2">
@@ -94,7 +94,7 @@ export default function AnalysisResult({ loaderData }: Route.ComponentProps) {
                   <li key={resume.id}>
                     <Link
                       to={`/resumes/${resume.id}`}
-                      className="text-cyan-400 hover:text-cyan-300"
+                      className="text-exhibit hover:text-exhibit-deep"
                     >
                       Resume: {resume.title}
                     </Link>
@@ -104,7 +104,7 @@ export default function AnalysisResult({ loaderData }: Route.ComponentProps) {
                   <li key={coverLetter.id}>
                     <Link
                       to={`/cover-letters/${coverLetter.id}`}
-                      className="text-cyan-400 hover:text-cyan-300"
+                      className="text-exhibit hover:text-exhibit-deep"
                     >
                       {coverLetter.title}
                     </Link>
@@ -116,11 +116,11 @@ export default function AnalysisResult({ loaderData }: Route.ComponentProps) {
         </aside>
 
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-exhibit">
             Analysis
           </p>
           <h1 className="mt-2 text-3xl font-semibold">{record.jobTitle}</h1>
-          <p className="mt-2 mb-8 text-slate-400">
+          <p className="mt-2 mb-8 text-ink-2">
             {record.companyName || "Company not specified"} ·{" "}
             {analysis.seniority || "Seniority not specified"}
           </p>
