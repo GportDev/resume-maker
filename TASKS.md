@@ -50,6 +50,10 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
   - `.env` has no `RAPIDAPI_KEY` or `TYPESAFE_API_KEY`, so live smoke tests cannot run.
   - Unblock: the user approves the migration target and supplies both keys; then run `pnpm db:migrate` against it and smoke `/jobs` and Run match.
   - Local development for U-tasks uses Docker `postgres:16` (`resume-maker-pg`, port 55432), migrated `0000`–`0006`, seeded with `node scripts/seed-dev.mjs`.
+- Update (2026-10-22): migration done.
+  - The user approved in chat and ran `pnpm db:migrate` from the main checkout (`.env` → Neon project `Resume-maker`, branch `production`, database `neondb`).
+  - Verified through the Neon connector (read-only): `drizzle.__drizzle_migrations` has 7 rows, the latest `created_at` = 1791479750093 (the `0006_job_matches` journal entry), `public.job_matches` exists with row-level security on, 4 indexes (primary key plus 3), and 3 foreign keys.
+  - Still blocked: the live smoke tests of `/jobs` and Run match need real `RAPIDAPI_KEY` and `TYPESAFE_API_KEY`.
 
 ## U01 — Visual direction and DESIGN.md
 
@@ -478,7 +482,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 - Last completed action: U13 audit fixes (board overflow, 24px targets), DESIGN.md refresh, and `.impeccable/design.json`.
 - Verification: `pnpm test` (326 passed), `pnpm typecheck`, `pnpm check`, `pnpm build` all pass on the final commit; detector reports 0 findings.
 - Local verification setup (not committed): Docker `postgres:16` container `resume-maker-pg` on port 55432; worktree `.env` with a local `DATABASE_URL`, generated secrets, and `BETTER_AUTH_URL=http://localhost:5174`; `node scripts/seed-dev.mjs` (run outside the sandbox) seeds the dev account; job search was checked against a synthetic local aggregator on port 5199 (`RAPIDAPI_KEY=local-fake-key`, `JOB_LISTINGS_BASE_URL=http://localhost:5199`).
-- Blockers: U00 needs explicit user approval to apply `drizzle/0006_job_matches.sql` to the remote Neon database, plus live `RAPIDAPI_KEY` and `TYPESAFE_API_KEY`.
+- Blockers: U00 still needs live `RAPIDAPI_KEY` and `TYPESAFE_API_KEY` for smoke tests. Migration 0006 is applied on Neon `production` (verified 2026-10-22).
 - Changed files: see `git log main..HEAD` (one commit per task, U00–U13).
 - Next task: U00 — Release carryover from S13.
-- First next action: ask the user to approve the migration target and provide both keys; then apply the migration with the approved `DATABASE_URL` and smoke `/jobs` and Run match. Optional follow-ups (would need new tasks): dark theme, refreshing the tree after a details autosave, a live generation check with an AI key.
+- First next action: ask the user for live `RAPIDAPI_KEY` and `TYPESAFE_API_KEY`, then smoke `/jobs` (one search, one save) and Run match on one analyzed application. Optional follow-ups (would need new tasks): dark theme, refreshing the tree after a details autosave, a live generation check with an AI key.
