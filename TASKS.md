@@ -37,7 +37,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U00 — Release carryover from S13
 
-- Status: `TODO`
+- Status: `BLOCKED`
 - Depends on: none (independent of U-tasks; can run any time)
 - Intent: close the S13 handoff items that are not yet verified.
 - Files: none expected; `TASKS.md` evidence only.
@@ -45,6 +45,11 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
   - `drizzle/0006_job_matches.sql` is applied to the user's remote database **only after explicit user approval in chat**.
   - Live smoke of `/jobs` with a real `RAPIDAPI_KEY` and of Run match with a real `TYPESAFE_API_KEY`, or a recorded `BLOCKED` with the exact missing key.
 - Verify: `pnpm db:migrate` output against the approved target; one saved LinkedIn listing; one stored job-match row.
+- Evidence (2026-10-21):
+  - Not run. The main `.env` points at a remote Neon database (`…-pooler.c-6.us-east-2.aws.neon.tech`). Applying `0006_job_matches.sql` there needs explicit user approval in chat, which has not been given.
+  - `.env` has no `RAPIDAPI_KEY` or `TYPESAFE_API_KEY`, so live smoke tests cannot run.
+  - Unblock: the user approves the migration target and supplies both keys; then run `pnpm db:migrate` against it and smoke `/jobs` and Run match.
+  - Local development for U-tasks uses Docker `postgres:16` (`resume-maker-pg`, port 55432), migrated `0000`–`0006`, seeded with `node scripts/seed-dev.mjs`.
 
 ## U01 — Visual direction and DESIGN.md
 
