@@ -441,7 +441,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U13 — Cross-app audit and finish
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U03–U12
 - Intent: confirm the redesign holds together and nothing regressed.
 - Files: fixes only where findings require; `TASKS.md` evidence
@@ -452,13 +452,33 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
   - Contrast ≥ 4.5:1 for body text and ≥ 3:1 for UI boundaries in both themes.
   - No `transition: all`, no `ease-in`, no UI animation > 300ms (`grep` evidence).
 - Verify: `pnpm test && pnpm typecheck && pnpm build && pnpm check`; audit report summary pasted into evidence.
+- Evidence (2026-10-22):
+  - Audit (impeccable `audit` dimensions; in-thread, because the shipped finish-reviewer and documenter agents are not available in this environment):
+
+    | # | Dimension | Score | Key finding |
+    | --- | --- | --- | --- |
+    | 1 | Accessibility | 3 | Focus rings, skip link, labels, and dnd announcements verified; 24px targets fixed; reduced motion is CSS-only (not runtime-emulated) |
+    | 2 | Performance | 3 | Editor decorations limited to the viewport and CodeMirror lazy-loaded; three Google font families (variable weights) are the main payload |
+    | 3 | Responsive | 4 | 14 routes × 375/1440 report no horizontal overflow after the fix below |
+    | 4 | Theming | 3 | Every color is a token; dark theme deferred by decision |
+    | 5 | Implementation integrity | 4 | Detector reports 0 findings after DESIGN.md documents the built ramp, paper sizes, and PDF fonts |
+    | **Total** | | **17/20** | Good |
+
+  - Fixed during the audit: (P1) the board overflowed the page to 856px at 375px because absolutely positioned `sr-only` labels inside cards had no positioned ancestor within the scroll container (cards and scroller are now `relative`). (P2) Standalone links (back links, "Open board", LinkedIn links), card document links, citation chips, and skill-chip remove buttons were under 24px (the 15px root makes `min-h-6` 22.5px); now `min-h-[24px]` / `size-[24px]` through a new `standaloneLinkClass`.
+  - Motion grep: no `transition-all` or `ease-in` (only `--ease-in-out`); no UI duration over 240ms; `.lift`/`.fade-in` name their properties.
+  - Contrast (from U01 tokens): body and secondary text ≥ 4.5:1 on board and sheet, control borders 3.4:1.
+  - Keyboard: Tab order starts at "Skip to content", then the tabs (2px exhibit-blue ring). Dialogs, menus, and board keyboard drag were verified in U02–U08.
+  - DESIGN.md refreshed from the built system (North Star, key characteristics, full type ramp including paper and PDF styles, inner/pill radii, print inks, writing page / board / paper preview components, The Paper Is Not The App rule). New `.impeccable/design.json` sidecar (tonal ramps, shadows, motion, breakpoints, seven components, narrative).
+  - `pnpm test` 326 passed; `typecheck`, `check`, `build` pass.
+  - Open follow-ups (P2/P3): dark theme; the contributions tree shows the old title until navigation after a details autosave; generation progress not exercised (no AI key locally); no committed visual-regression screenshots; finish review was in-thread rather than a fresh reviewer agent.
 
 ## Handoff
 
-- Current task: none `IN_PROGRESS`.
-- Last completed action: replaced the S-series task list with the U-series UX plan above, based on a review of every route and the editor components. `PRODUCT.md` was created by `/impeccable init` in the same session. Then rewrote U04 to the user's choice: Notion-style inline live-preview editor (no separate preview pane), and aligned U05's position header with it. No source code changed.
-- Verification: documentation only; no commands needed. Prior state (S13) passed `pnpm test && pnpm typecheck && pnpm build && pnpm check` (261 tests).
-- Blockers: U01 needs the user to choose a visual direction. U00 needs user approval before touching the remote database.
-- Changed files: `TASKS.md`, `PRODUCT.md`.
-- Next task: U01 — Visual direction and DESIGN.md.
-- First next action: run `/impeccable shape app shell redesign` (new-work, redesign mode). Read `PRODUCT.md` and this file's "Why this plan exists" section, then present 2–3 directions to the user before writing `DESIGN.md`.
+- Current task: none `IN_PROGRESS`. U01–U13 `DONE`; U00 `BLOCKED`.
+- Last completed action: U13 audit fixes (board overflow, 24px targets), DESIGN.md refresh, and `.impeccable/design.json`.
+- Verification: `pnpm test` (326 passed), `pnpm typecheck`, `pnpm check`, `pnpm build` all pass on the final commit; detector reports 0 findings.
+- Local verification setup (not committed): Docker `postgres:16` container `resume-maker-pg` on port 55432; worktree `.env` with a local `DATABASE_URL`, generated secrets, and `BETTER_AUTH_URL=http://localhost:5174`; `node scripts/seed-dev.mjs` (run outside the sandbox) seeds the dev account; job search was checked against a synthetic local aggregator on port 5199 (`RAPIDAPI_KEY=local-fake-key`, `JOB_LISTINGS_BASE_URL=http://localhost:5199`).
+- Blockers: U00 needs explicit user approval to apply `drizzle/0006_job_matches.sql` to the remote Neon database, plus live `RAPIDAPI_KEY` and `TYPESAFE_API_KEY`.
+- Changed files: see `git log main..HEAD` (one commit per task, U00–U13).
+- Next task: U00 — Release carryover from S13.
+- First next action: ask the user to approve the migration target and provide both keys; then apply the migration with the approved `DATABASE_URL` and smoke `/jobs` and Run match. Optional follow-ups (would need new tasks): dark theme, refreshing the tree after a details autosave, a live generation check with an AI key.

@@ -90,7 +90,7 @@ export function SkillInput({
                 if (event.key === "ArrowRight") move(index, 1);
               }}
               aria-label={`${skill}, position ${index + 1} of ${skills.length}. Arrow keys reorder.`}
-              className="cursor-default"
+              className="min-h-[24px] cursor-default"
             >
               {skill}
             </button>
@@ -98,7 +98,7 @@ export function SkillInput({
               type="button"
               onClick={() => onChange(skills.filter((item) => item !== skill))}
               aria-label={`Remove ${skill}`}
-              className="grid size-5 place-items-center rounded-[3px] text-ink-3 hover:bg-board-deep hover:text-ink"
+              className="grid size-[24px] place-items-center rounded-[4px] text-ink-3 hover:bg-board-deep hover:text-ink"
             >
               <X aria-hidden="true" className="size-3.5" />
             </button>

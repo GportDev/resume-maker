@@ -36,7 +36,11 @@ export function PageHeader({
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-5">
       <div className="min-w-0">
-        {back ? <div className="mb-2 text-sm">{back}</div> : null}
+        {back ? (
+          <div className="mb-1.5 text-sm [&>a]:inline-flex [&>a]:min-h-[24px] [&>a]:items-center">
+            {back}
+          </div>
+        ) : null}
         <h1 className="text-balance text-[1.75rem] font-bold leading-tight tracking-[-0.015em]">
           {title}
         </h1>

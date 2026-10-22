@@ -63,7 +63,7 @@ export function MatchBadge({ match }: { match: JobMatchSummary }) {
 }
 
 const documentLinkClass =
-  "rounded text-exhibit hover:text-exhibit-deep focus-visible:outline-2 focus-visible:outline-exhibit";
+  "inline-flex min-h-[24px] items-center rounded text-exhibit hover:text-exhibit-deep focus-visible:outline-2 focus-visible:outline-exhibit";
 
 export function LinkedInBadge() {
   return <Stamp tone="neutral">LinkedIn</Stamp>;
@@ -103,7 +103,7 @@ function DocumentLinks({ application }: { application: ApplicationCardData }) {
       <LinkedInPostingLink externalId={application.externalId} label={label} />
     ) : null;
   return (
-    <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+    <ul className="mt-1.5 flex flex-wrap gap-x-3 text-xs">
       <li>
         <Link
           to={`/applications/${application.id}/tailor`}
@@ -170,13 +170,13 @@ export function ApplicationCard({
     Boolean(badges);
 
   return (
-    <article className="rounded-sheet bg-sheet p-3 shadow-sheet">
+    <article className="relative rounded-sheet bg-sheet p-3 shadow-sheet">
       <div className="flex items-start gap-1">
         <div className="min-w-0 flex-1 pt-0.5">
           <h3 className="text-sm font-semibold leading-5">
             <Link
               to={`/applications/${application.id}`}
-              className="hover:text-exhibit"
+              className="inline-flex min-h-[24px] items-center hover:text-exhibit"
             >
               {application.position}
             </Link>

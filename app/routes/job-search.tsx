@@ -12,7 +12,12 @@ import {
   LinkedInBadge,
   LinkedInPostingLink,
 } from "../components/application-card";
-import { Button, ButtonLink, textLinkClass } from "../components/ui/button";
+import {
+  Button,
+  ButtonLink,
+  standaloneLinkClass,
+  textLinkClass,
+} from "../components/ui/button";
 import { fieldClass } from "../components/ui/field";
 import { PageHeader, Sheet } from "../components/ui/sheet";
 import { Stamp } from "../components/ui/stamp";
@@ -437,7 +442,7 @@ function ListingDetail({
             <LinkedInPostingLink
               externalId={listing.externalId}
               label={label}
-              className={`text-sm ${textLinkClass}`}
+              className={`text-sm ${standaloneLinkClass}`}
             >
               View on LinkedIn
             </LinkedInPostingLink>
@@ -504,7 +509,7 @@ function ListingCard({
           <LinkedInPostingLink
             externalId={listing.externalId}
             label={`${listing.title} at ${listing.company || "unknown company"}`}
-            className={`text-sm ${textLinkClass}`}
+            className={`text-sm ${standaloneLinkClass}`}
           >
             View on LinkedIn
           </LinkedInPostingLink>

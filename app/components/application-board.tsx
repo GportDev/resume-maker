@@ -247,7 +247,7 @@ export function ApplicationBoard({
         },
       }}
     >
-      <div className="flex snap-x gap-3 overflow-x-auto pb-4">
+      <div className="relative flex snap-x gap-3 overflow-x-auto pb-4">
         {openStatuses.map((status) => (
           <BoardColumn
             key={status}

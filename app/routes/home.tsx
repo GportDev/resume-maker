@@ -2,7 +2,12 @@ import { CircleCheck } from "lucide-react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { z } from "zod";
 import { FitBadge, StatusBadge } from "../components/application-card";
-import { Button, ButtonLink, textLinkClass } from "../components/ui/button";
+import {
+  Button,
+  ButtonLink,
+  standaloneLinkClass,
+  textLinkClass,
+} from "../components/ui/button";
 import { Field, fieldClass } from "../components/ui/field";
 import { PageHeader, Sheet, SheetSection } from "../components/ui/sheet";
 import {
@@ -321,7 +326,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             </h2>
             <Link
               to="/applications"
-              className={`text-[0.8125rem] ${textLinkClass}`}
+              className={`text-[0.8125rem] ${standaloneLinkClass}`}
             >
               Open board
             </Link>

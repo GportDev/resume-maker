@@ -91,5 +91,9 @@ export function ButtonLink({
   );
 }
 
+/** A text link that stands alone (not inside a sentence) with a 24px target. */
+export const standaloneLinkClass =
+  "inline-flex min-h-[24px] items-center rounded-[2px] font-medium text-exhibit underline-offset-3 hover:text-exhibit-deep hover:underline";
+
 export const textLinkClass =
   "rounded-[2px] font-medium text-exhibit underline-offset-3 hover:text-exhibit-deep hover:underline";

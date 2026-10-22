@@ -42,7 +42,7 @@ export function ExhibitCitation({ position }: { position: PositionLabel }) {
     <Link
       to={`/contributions/${position.id}`}
       title={`${position.position} · ${position.company}`}
-      className="inline-flex items-center gap-1.5 rounded-stamp bg-manila-tint px-1.5 py-0.5 text-[0.75rem] text-manila-ink hover:bg-manila/40"
+      className="inline-flex min-h-[24px] items-center gap-1.5 rounded-stamp bg-manila-tint px-1.5 py-0.5 text-[0.75rem] text-manila-ink hover:bg-manila/40"
     >
       {position.exhibit ? (
         <span className="text-[0.6875rem] font-bold tracking-[0.06em] uppercase">

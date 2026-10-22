@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T00:00:00Z",
+  "title": "Design System: Resume Fit",
+  "extensions": {
+    "colorMeta": {
+      "board": {
+        "role": "neutral",
+        "displayName": "Binder Board",
+        "canonical": "#e8e4db",
+        "tonalRamp": [
+          "#2f291e",
+          "#4e4532",
+          "#6d6146",
+          "#8c7c59",
+          "#afa283",
+          "#cdc5b1",
+          "#e5e1d7",
+          "#f5f3ef"
+        ]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Sheet",
+        "canonical": "#fcfbf8",
+        "tonalRamp": [
+          "#362e17",
+          "#594c26",
+          "#7d6b36",
+          "#a18a45",
+          "#c2ad70",
+          "#d9cca6",
+          "#ebe4d1",
+          "#f7f5ed"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1c1c1c",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#999999",
+          "#bfbfbf",
+          "#dedede",
+          "#f2f2f2"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Ruled Line",
+        "canonical": "#dcd7cc",
+        "tonalRamp": [
+          "#2d291f",
+          "#4c4434",
+          "#6a5f49",
+          "#887b5d",
+          "#aca086",
+          "#cbc4b3",
+          "#e4e0d8",
+          "#f5f3f0"
+        ]
+      },
+      "exhibit": {
+        "role": "primary",
+        "displayName": "Exhibit Blue",
+        "canonical": "#24427a",
+        "tonalRamp": [
+          "#11203b",
+          "#1d3562",
+          "#294b8a",
+          "#3460b1",
+          "#6188d1",
+          "#9db5e2",
+          "#ccd8f0",
+          "#ebf0f9"
+        ]
+      },
+      "manila": {
+        "role": "secondary",
+        "displayName": "Manila",
+        "canonical": "#e1c06a",
+        "tonalRamp": [
+          "#40320d",
+          "#6a5315",
+          "#95741e",
+          "#bf9526",
+          "#ddb755",
+          "#ead295",
+          "#f4e8c8",
+          "#fbf6ea"
+        ]
+      },
+      "margin": {
+        "role": "tertiary",
+        "displayName": "Margin Red",
+        "canonical": "#c4473b",
+        "tonalRamp": [
+          "#3b1512",
+          "#62241d",
+          "#893229",
+          "#b04035",
+          "#d06c62",
+          "#e2a39d",
+          "#f0cfcc",
+          "#f9edeb"
+        ]
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger",
+        "canonical": "#a1352b",
+        "tonalRamp": [
+          "#3c1410",
+          "#65211b",
+          "#8d2e26",
+          "#b53c30",
+          "#d4685e",
+          "#e4a19a",
+          "#f1cecb",
+          "#faeceb"
+        ]
+      },
+      "ok": {
+        "role": "semantic",
+        "displayName": "Verified Green",
+        "canonical": "#2f6b45",
+        "tonalRamp": [
+          "#173522",
+          "#275939",
+          "#367c50",
+          "#469f67",
+          "#71c18e",
+          "#a6d8b9",
+          "#d1ebda",
+          "#edf7f1"
+        ]
+      },
+      "warn": {
+        "role": "semantic",
+        "displayName": "Needs Review",
+        "canonical": "#8a5a12",
+        "tonalRamp": [
+          "#442c09",
+          "#714a0f",
+          "#9e6715",
+          "#cb841a",
+          "#e7a94b",
+          "#f0c98e",
+          "#f7e3c4",
+          "#fcf4e8"
+        ]
+      },
+      "violet": {
+        "role": "semantic",
+        "displayName": "Interviewing Violet",
+        "canonical": "#5b3f8c",
+        "tonalRamp": [
+          "#221835",
+          "#392858",
+          "#50377b",
+          "#67479e",
+          "#8e72c0",
+          "#b9a7d7",
+          "#dad1ea",
+          "#f1edf7"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Page title",
+        "purpose": "One h1 per page, in the sheet header."
+      },
+      "writing": {
+        "displayName": "Writing",
+        "purpose": "The contribution editor and long-form generated text."
+      },
+      "stamp": {
+        "displayName": "Stamp",
+        "purpose": "Uppercase status marks and exhibit chips only."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Fit estimate and match percentage."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sheet",
+        "value": "0 1px 2px rgb(28 28 28 / 0.06), 0 10px 28px -14px rgb(28 28 28 / 0.22)",
+        "purpose": "The page sheet and board cards."
+      },
+      {
+        "name": "lifted",
+        "value": "0 2px 4px rgb(28 28 28 / 0.08), 0 18px 40px -16px rgb(28 28 28 / 0.35)",
+        "purpose": "Dragged cards, popovers, menus, dialogs, toasts."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Enter, exit, press, drop."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+        "purpose": "On-screen movement."
+      },
+      {
+        "name": "duration-press",
+        "value": "160ms",
+        "purpose": "Button press scale 0.97."
+      },
+      {
+        "name": "duration-pop",
+        "value": "150ms",
+        "purpose": "Popovers and the selection toolbar (exit 100ms)."
+      },
+      {
+        "name": "duration-dialog",
+        "value": "240ms",
+        "purpose": "Dialog enter (exit 150ms)."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action; one per view.",
+      "html": "<button class=\"ds-btn-primary\">Tailor</button>",
+      "css": ".ds-btn-primary{background:var(--color-exhibit,#24427a);color:var(--color-sheet,#fcfbf8);height:36px;padding:0 14px;border:0;border-radius:6px;font:500 14px/1 'Libre Franklin',system-ui,sans-serif;transition:transform 160ms cubic-bezier(0.23,1,0.32,1),background-color 160ms}.ds-btn-primary:hover{background:#1b3463}.ds-btn-primary:active{transform:scale(0.97)}.ds-btn-primary:focus-visible{outline:2px solid #24427a;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral actions.",
+      "html": "<button class=\"ds-btn-secondary\">Find jobs</button>",
+      "css": ".ds-btn-secondary{background:#fff;color:#1c1c1c;height:36px;padding:0 14px;border:1px solid #8f887a;border-radius:6px;font:500 14px/1 'Libre Franklin',system-ui,sans-serif;transition:transform 160ms cubic-bezier(0.23,1,0.32,1)}.ds-btn-secondary:hover{background:#f4f1ea;border-color:#65615a}.ds-btn-secondary:active{transform:scale(0.97)}.ds-btn-secondary:focus-visible{outline:2px solid #24427a;outline-offset:2px}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Text input on white with a strong rule border.",
+      "html": "<input class=\"ds-field\" placeholder=\"Location, e.g. Lisbon, Portugal\">",
+      "css": ".ds-field{background:#fff;color:#1c1c1c;height:38px;padding:0 12px;border:1px solid #8f887a;border-radius:6px;font:400 15px 'Libre Franklin',system-ui,sans-serif}.ds-field::placeholder{color:#65615a}.ds-field:focus-visible{outline:2px solid #24427a;outline-offset:0;border-color:#24427a}"
+    },
+    {
+      "name": "Index Tabs",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Binder tabs; the active tab joins the sheet.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab\">Home</a><a class=\"ds-tab ds-tab-active\">Applications</a><a class=\"ds-tab\">Contributions</a></nav>",
+      "css": ".ds-tabs{display:flex;gap:4px;background:#dcd7cc;padding:12px 16px 0;border-bottom:1px solid #b9b2a4}.ds-tab{padding:8px 14px 10px;border-radius:6px 6px 0 0;font:500 14px 'Libre Franklin',system-ui,sans-serif;color:#4b4943;margin-bottom:-1px;border:1px solid transparent;border-bottom:0}.ds-tab:hover{color:#1c1c1c;background:rgba(252,251,248,.5)}.ds-tab-active{background:#fcfbf8;color:#1c1c1c;border-color:#b9b2a4}"
+    },
+    {
+      "name": "Stamp",
+      "kind": "chip",
+      "refersTo": "stamp",
+      "description": "Rubber-stamp status mark.",
+      "html": "<span class=\"ds-stamp\">Applied</span>",
+      "css": ".ds-stamp{display:inline-flex;align-items:center;padding:3px 6px;border:1.5px solid rgba(36,66,122,.6);border-radius:2px;background:#e4e9f2;color:#24427a;font:700 11px/1 'Libre Franklin',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}"
+    },
+    {
+      "name": "Exhibit Citation",
+      "kind": "custom",
+      "refersTo": "citation",
+      "description": "Links a claim to the contribution file it came from.",
+      "html": "<a class=\"ds-cite\"><b>Ex. 5</b> Staff Software Engineer</a>",
+      "css": ".ds-cite{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:0 6px;border-radius:2px;background:#f6ecd0;color:#6b5216;font:400 12px 'Libre Franklin',system-ui,sans-serif;text-decoration:none}.ds-cite b{font-size:11px;letter-spacing:.06em;text-transform:uppercase}.ds-cite:hover{background:#ecd9a0}.ds-cite:focus-visible{outline:2px solid #24427a;outline-offset:2px}"
+    },
+    {
+      "name": "Sheet",
+      "kind": "card",
+      "refersTo": "sheet",
+      "description": "The one working surface per page.",
+      "html": "<section class=\"ds-sheet\"><h1>Applications</h1><p>Drag cards between columns as each process moves.</p></section>",
+      "css": ".ds-sheet{background:#fcfbf8;border-radius:3px;padding:32px;box-shadow:0 1px 2px rgb(28 28 28/.06),0 10px 28px -14px rgb(28 28 28/.22);font-family:'Libre Franklin',system-ui,sans-serif;color:#1c1c1c}.ds-sheet h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.015em}.ds-sheet p{margin:6px 0 0;color:#4b4943;font-size:15px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Exhibit Binder",
+    "overview": "The job hunt is a well-kept binder: work history is filed once as numbered exhibits, and every score, resume bullet, and cover-letter paragraph cites the exhibit it came from. The interface is an Operate tool used daily at a desk, so it is light, calm, and dense where data lives. Expression lives in a few precise binder details: index tabs, white sheets on a warm-gray board, ruled hairlines, rubber-stamp status marks, and \"Ex. N\" citation chips. It is never in decoration.",
+    "keyCharacteristics": [
+      "Warm-gray board ground with one white sheet per page.",
+      "Index-tab navigation whose active tab joins the sheet.",
+      "Rubber-stamp status marks and \"Ex. N\" citation chips.",
+      "Notion-style live-preview writing page with a legal-pad margin rule.",
+      "Documents previewed on true Letter paper, ATS-neutral."
+    ],
+    "rules": [
+      {
+        "name": "The One Sheet Rule",
+        "body": "Each page has one white sheet carrying its primary work. Sections inside it are separated by ruled hairlines and headings, never by nested panels. Sidebars and secondary context sit directly on the board.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper Is Not The App Rule",
+        "body": "Paper previews and PDFs use plain inks on white with no binder tokens, so what the user sees is what a recruiter's ATS sees.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do keep one sheet per page and separate its sections with hairlines.",
+      "Do cite exhibits (\"Ex. 3\") wherever a generated or matched claim appears.",
+      "Do use motion tokens: --ease-out: cubic-bezier(0.23, 1, 0.32, 1), --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); press 160ms, popover 150ms, dialog 240ms; exits faster than enters.",
+      "Do respect prefers-reduced-motion: keep opacity, drop transforms."
+    ],
+    "donts": [
+      "Don't nest panels or wrap every section in a bordered card.",
+      "Don't put eyebrow labels above headings.",
+      "Don't animate keyboard-initiated actions, tab switches, or list navigation.",
+      "Don't use transition: all, ease-in, or UI durations over 300ms.",
+      "Don't use emoji or Unicode glyphs as icons. Icons are drawn SVG with one stroke weight (1.75px, 16/20px grid)."
+    ]
+  }
+}

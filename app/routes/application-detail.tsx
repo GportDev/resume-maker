@@ -20,6 +20,7 @@ import {
   Button,
   ButtonLink,
   buttonClass,
+  standaloneLinkClass,
   textLinkClass,
 } from "../components/ui/button";
 import { ConfirmDialog, openDialog } from "../components/ui/confirm-dialog";
@@ -864,7 +865,7 @@ export default function ApplicationDetail({
         <LinkedInPostingLink
           externalId={application.externalId}
           label={label}
-          className={textLinkClass}
+          className={standaloneLinkClass}
         >
           View on LinkedIn
         </LinkedInPostingLink>
@@ -874,7 +875,7 @@ export default function ApplicationDetail({
         href={application.sourceUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className={`inline-flex items-center gap-1 ${textLinkClass}`}
+        className={`gap-1 ${standaloneLinkClass}`}
       >
         Open posting
         <ExternalLink aria-hidden="true" className="size-3.5" />
