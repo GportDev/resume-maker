@@ -8,6 +8,8 @@ import {
 } from "../lib/job-match";
 import type { PositionLabel } from "./analysis-summary";
 import { MatchBadge } from "./application-card";
+import { buttonClass } from "./ui/button";
+import { Stamp, type StampTone } from "./ui/stamp";
 
 export type JobMatchView = {
   id: string;
@@ -36,14 +38,13 @@ const statusLabels: Record<RequirementStatus, string> = {
   needs_review: "Needs review",
 };
 
-const statusTone: Record<RequirementStatus, string> = {
-  verified: "bg-ok-tint text-ok",
-  missing: "bg-sheet-sunk text-ink-2",
-  needs_review: "bg-warn-tint text-warn",
+const statusTone: Record<RequirementStatus, StampTone> = {
+  verified: "ok",
+  missing: "danger",
+  needs_review: "warn",
 };
 
-const smallButtonClass =
-  "rounded-lg border border-rule-strong px-2.5 py-1 text-xs hover:border-exhibit disabled:opacity-60";
+const smallButtonClass = buttonClass({ size: "sm" });
 
 function percent(value: number | null): string {
   return value === null ? "—" : `${Math.round(value * 100)}%`;
@@ -78,9 +79,7 @@ function RequirementStatusCell({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className={`rounded px-1.5 py-0.5 text-xs ${statusTone[status]}`}>
-        {label}
-      </span>
+      <Stamp tone={statusTone[status]}>{label}</Stamp>
       {decision.status === "needs_review" ? (
         <Form method="post" className="flex gap-1.5">
           <input type="hidden" name="intent" value="match-override" />
@@ -163,13 +162,10 @@ export function JobMatchPanel({
       : undefined;
 
   return (
-    <section
-      aria-labelledby="job-match-heading"
-      className="rounded-2xl border border-rule bg-sheet p-6"
-    >
+    <section aria-labelledby="job-match-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 id="job-match-heading" className="text-xl font-semibold">
+          <h2 id="job-match-heading" className="text-lg font-semibold">
             Job match
           </h2>
           <p className="mt-1 text-sm text-ink-3">
@@ -183,7 +179,8 @@ export function JobMatchPanel({
               name="intent"
               value="run-match"
               disabled={busy}
-              className="rounded-xl border border-exhibit px-4 py-2 text-sm font-semibold text-exhibit-deep hover:bg-exhibit-tint disabled:opacity-60"
+              aria-busy={pendingIntent === "run-match" || undefined}
+              className={buttonClass({ variant: "secondary" })}
             >
               {pendingIntent === "run-match"
                 ? "Running match…"
@@ -222,7 +219,7 @@ export function JobMatchPanel({
         <div className="mt-5 space-y-5">
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
-              <p className="text-4xl font-semibold text-exhibit-deep">
+              <p className="tabular text-[2rem] leading-none font-bold tracking-[-0.02em]">
                 {result.matchScore}%
               </p>
               <div className="mt-1">
@@ -279,7 +276,7 @@ export function JobMatchPanel({
           {result.requirements.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[40rem] text-left text-sm">
-                <thead className="text-xs uppercase tracking-wider text-ink-3">
+                <thead className="text-[0.8125rem] text-ink-3">
                   <tr>
                     <th scope="col" className="py-2 pr-4 font-medium">
                       Requirement

@@ -458,6 +458,19 @@ export async function updateApplication(
   });
 }
 
+export async function updateApplicationNotes(
+  userId: string,
+  applicationId: string,
+  notes: string,
+) {
+  const [application] = await db
+    .update(jobApplications)
+    .set({ notes, updatedAt: new Date() })
+    .where(applicationOwner(userId, applicationId))
+    .returning({ id: jobApplications.id });
+  return application;
+}
+
 export async function moveApplication(
   userId: string,
   applicationId: string,

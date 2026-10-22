@@ -300,7 +300,7 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 ## U08 — Application detail
 
-- Status: `TODO`
+- Status: `DONE`
 - Depends on: U02, U07
 - Intent: a record page that reads first and edits on demand, with Tailor as the obvious next step.
 - Files: `app/routes/application-detail.tsx`, `app/components/job-match-panel.tsx`, `app/components/ui/*`
@@ -318,6 +318,14 @@ Product rules from `PRODUCT.md` still apply: one evidence vault, traceable claim
 
 - Acceptance: create/edit/delete/status/notes all work with and without JS. The match panel keeps accept/reject overrides. Validation errors still map to fields.
 - Verify: `pnpm typecheck && pnpm build`; browser both widths; no-JS create and edit.
+- Evidence (2026-10-21):
+  - The detail page reads first. Header: back link, position title, company and location, a status switcher (instant save through `intent=status` → `placeApplication`, toast; `<noscript>` Update button), a primary Tailor action, and a "⋯" menu (Edit details, Delete).
+  - Read view sections in one sheet: Details (company, location, salary, applied date, posting link), Job description (readable text, collapsed to about 12 lines with a fade and "Show the full posting"), Notes (autosaved through `intent=notes` → new `updateApplicationNotes`; status line; `<noscript>` save), Job match (panel flattened into the sheet, stamps and shared buttons).
+  - Editing is on demand through `?edit=1` (works without JS). Saving redirects to the read view with `?saved=1` for a toast, then the flag is removed from the URL. New applications keep the full form. The salary range is one inline row.
+  - Aside: one Documents panel with the new shared `FitBreakdown` (segmented ledger bar; each factor's slot is sized by its maximum and filled by earned points; heuristic disclaimer), resume and cover letter rows with Edit/PDF, and "Tailor again".
+  - Delete goes through ConfirmDialog opened from the menu; the no-JS fallback form stays.
+  - `pnpm test` 314 passed; `typecheck`, `check`, `build` pass.
+  - Browser: status switch to Interviewing showed "Moved to Interviewing." and persisted; a notes edit autosaved (verified in the route `.data` payload); edit → Save redirected to the read view with "Application saved."; `/applications/new?status=applied` preselects Applied; 375px has no horizontal scroll.
 
 ## U09 — Tailor flow and analysis results
 
